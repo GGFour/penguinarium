@@ -9,14 +9,12 @@ Tupik acts as a pipeline of 3 major stages.
 ## Stage 1
 
 - Gather stats of data, makes numerous statistical checks for different data divergencies
-- Around 50 checks are included in this stage
-- Todo: ChatGPT on what checkers can be implemented
+- 59 methods can be seen in **docs/statistical_methods.py**
 
 ## Stage 2
 
 - Numerous AI/ML tools that are made to analyze contents of data and metadata and check for values that are not fitting into constraints in its context and context of the world we live in
-- Around 10 checks are included in this stage
-- Todo: ChatGPT on what checkers can be implemented
+- 10 methods can be seen in **docs/aiml_methods.md**
 
 ## Stage 3
 
