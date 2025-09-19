@@ -1,10 +1,10 @@
-# PENGUINARIUM
+# Tupik
 
-Penguinarius is a tool that is alerting about data anomalies, ensures consistency and awareness of suspicious entries.
+Tupik is a tool that is alerting about data anomalies, ensures consistency and awareness of suspicious entries.
 
 # Architecture
 
-Penguinarius acts as a pipeline of 3 major stages. 
+Tupik acts as a pipeline of 3 major stages. 
 
 ## Stage 1
 
@@ -21,7 +21,7 @@ Penguinarius acts as a pipeline of 3 major stages.
 ## Stage 3
 
 - Mad (data) scientist tier feature
-- Have a help of agentic AI to find inconsistencies in data
+- Have a help of agentic AI to find inconsistencies in data and find root causes of data anomalies
 
 
 
