@@ -14,6 +14,7 @@ erDiagram
         int data_source_id FK
         string name
         string description
+        json metadata
         datetime created_at
         datetime updated_at
     }
@@ -105,5 +106,4 @@ erDiagram
     FIELD_METADATA }o--|| TABLE_METADATA : "belongs to"
     PIPELINE }o--|| DATA_SOURCE : "optional link to"
     ALERT }o--|| PIPELINE_STEP : "belongs to"
-
 ```
