@@ -1,0 +1,71 @@
+from django.db import models
+from typing import Any
+
+from src.common.models import BaseModel
+
+class DataSource(BaseModel):
+    """
+    Represents a data source that can be connected to for data extraction.
+    
+    This model stores information about various data sources such as databases,
+    APIs, files, etc. that can be used in data pipelines.
+    """
+    
+    # Data source types
+    class DataSourceType(models.TextChoices):
+        DATABASE = 'database', 'Database'
+        API = 'api', 'API'
+        FILE = 'file', 'File'
+        STREAM = 'stream', 'Stream'
+        CLOUD = 'cloud', 'Cloud Storage'
+        OTHER = 'other', 'Other'
+    
+    data_source_id = models.AutoField(
+        primary_key=True,
+        help_text="Primary key for the data source"
+    )
+    
+    name = models.CharField(
+        max_length=255,
+        help_text="Human-readable name for the data source"
+    )
+    
+    type = models.CharField(
+        max_length=50,
+        choices=DataSourceType.choices,
+        help_text="Type of data source (database, API, file, etc.)"
+    )
+    
+    connection_info: models.JSONField[Any] = models.JSONField(
+        help_text="Configuration and connection details for the data source"
+    )
+    
+    class Meta(BaseModel.Meta):
+        verbose_name = "Data Source"
+        verbose_name_plural = "Data Sources"
+        ordering = ['name']
+    
+    def __str__(self):
+        return f"{self.name} ({self.get_type_display()})"
+    
+    def is_database_type(self):
+        """Check if this data source is a database type."""
+        return self.type == self.DataSourceType.DATABASE
+    
+    def is_api_type(self):
+        """Check if this data source is an API type."""
+        return self.type == self.DataSourceType.API
+    
+    def is_file_type(self):
+        """Check if this data source is a file type."""
+        return self.type == self.DataSourceType.FILE
+    
+    @property
+    def display_name(self):
+        """Get a user-friendly display name."""
+        return f"{self.name} ({self.get_type_display()})"
+    
+    # TODO: Add relationships when related models are created
+    # Relationships based on ER diagram:
+    # - One-to-many with TableMetadata (data_source.table_metadata_set)
+    # - One-to-many with Pipeline (data_source.pipeline_set)

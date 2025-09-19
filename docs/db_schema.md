@@ -29,7 +29,7 @@ erDiagram
         datetime updated_at
     }
 
-    RELATION {
+    FIELD_RELATION {
         int id PK
         int src_field_id FK
         int dst_field_id FK
@@ -93,8 +93,8 @@ erDiagram
     FIELD_METADATA ||--o{ FIELD_STATS : "has stats"
     FIELD_METADATA ||--o{ FIELD_CONSTRAINT : "has constraints"
 
-    FIELD_METADATA ||--o{ RELATION : "source/destination in"
-    RELATION }o--|| FIELD_METADATA : "references"
+    FIELD_METADATA ||--o{ FIELD_RELATION : "source/destination in"
+    FIELD_RELATION }o--|| FIELD_METADATA : "references"
 
     DATA_SOURCE ||--o{ PIPELINE : "may have"
     PIPELINE ||--o{ PIPELINE_STEP : "has steps"
