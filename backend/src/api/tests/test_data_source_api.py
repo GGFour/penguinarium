@@ -2,8 +2,6 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from rest_framework import status
 from rest_framework.test import APITestCase
-
-from api.models import ApiKey
 from pulling.models.data_source import DataSource
 from typing import Dict, Any
 
@@ -11,11 +9,9 @@ from typing import Dict, Any
 class TestDataSourceAPI(APITestCase):
 	def setUp(self):
 		self.list_url = reverse('data-source-list')
-		# Auth setup
+		# No auth required
 		User = get_user_model()
 		self.user = User.objects.create(username="ds@example.com", email="ds@example.com")
-		self.key = ApiKey.objects.create(key="k-ds", user=self.user)
-		self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.key.key}")
 
 	def test_create_data_source(self):
 		payload: Dict[str, Any] = {

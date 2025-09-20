@@ -4,11 +4,8 @@ from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APITestCase
 from rest_framework import status
-
-from api.models import ApiKey
 from pulling.models.data_source import DataSource
 from pulling.models.table_metadata import TableMetadata
-from api.middleware import RateLimitMiddleware
 
 
 def ds_public_id(ds: DataSource) -> str:
@@ -22,9 +19,7 @@ class V1ApiTests(APITestCase):
         # Users
         self.user = User.objects.create(username="u1@example.com", email="u1@example.com")
         self.user2 = User.objects.create(username="u2@example.com", email="u2@example.com")
-        # Keys
-        self.key1 = ApiKey.objects.create(key="key-1", user=self.user)
-        self.key2 = ApiKey.objects.create(key="key-2", user=self.user2)
+    # No keys needed when auth is disabled
 
         # Data sources for user1 and user2
         self.ds1 = DataSource.objects.create(
@@ -53,7 +48,8 @@ class V1ApiTests(APITestCase):
         )
 
     def auth(self, key: str):
-        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {key}")
+        # No-op: authentication disabled
+        self.client.credentials()
 
     def test_users_create(self):
         url = reverse("v1-users-create")
@@ -70,7 +66,7 @@ class V1ApiTests(APITestCase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
     def test_get_user_self(self):
-        self.auth(self.key1.key)
+        self.client.credentials()
         url = reverse("v1-users-retrieve", args=[f"user_{self.user.id}"])
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
@@ -86,7 +82,7 @@ class V1ApiTests(APITestCase):
                 type=DataSource.DataSourceType.API,
                 connection_info={},
             )
-        self.auth(self.key1.key)
+        self.client.credentials()
         url = reverse("v1-user-datasources", args=[f"user_{self.user.id}"])
         resp = self.client.get(url + "?limit=2&offset=0")
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
@@ -98,7 +94,7 @@ class V1ApiTests(APITestCase):
         self.assertIn(ds_public_id(self.ds1), owned_ids)
 
     def test_datasource_retrieve_and_status(self):
-        self.auth(self.key1.key)
+        self.client.credentials()
         ds_id = ds_public_id(self.ds1)
         # retrieve
         url = reverse("v1-datasource-retrieve", args=[ds_id])
@@ -114,7 +110,7 @@ class V1ApiTests(APITestCase):
     # With rate limiting disabled, no rate limit headers are guaranteed
 
     def test_tables_list_mapping(self):
-        self.auth(self.key1.key)
+        self.client.credentials()
         ds_id = ds_public_id(self.ds1)
         url = reverse("v1-datasource-tables", args=[ds_id])
         resp = self.client.get(url)
@@ -128,7 +124,7 @@ class V1ApiTests(APITestCase):
         self.assertIn("last_updated_at", item)
 
     def test_alerts_list_empty(self):
-        self.auth(self.key1.key)
+        self.client.credentials()
         ds_id = ds_public_id(self.ds1)
         url = reverse("v1-datasource-alerts", args=[ds_id])
         resp = self.client.get(url)
@@ -153,7 +149,7 @@ class V1ApiTests(APITestCase):
         self.assertIn("error", resp.data)
 
     def test_error_format_404(self):
-        self.auth(self.key1.key)
+        self.client.credentials()
         url = reverse("v1-datasource-retrieve", args=["ds_NONEXISTENT"])
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
@@ -163,7 +159,7 @@ class V1ApiTests(APITestCase):
 
     def test_rate_limit_disabled(self):
         # No 429s when rate limiting is disabled
-        self.auth(self.key1.key)
+        self.client.credentials()
         ds_id = ds_public_id(self.ds1)
         url = reverse("v1-datasource-status", args=[ds_id])
         r1 = self.client.get(url)
