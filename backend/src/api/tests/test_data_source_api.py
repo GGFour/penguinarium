@@ -81,3 +81,28 @@ class TestDataSourceAPI(APITestCase):
 		resp2 = self.client.get(alerts_url2)
 		self.assertEqual(resp2.status_code, status.HTTP_200_OK)
 		self.assertEqual(resp2.data, [])
+
+	def test_alerts_invalid_id_404_and_method_not_allowed(self):
+		# Non-existent data source id should 404
+		alerts_url = reverse('data-source-alerts', args=[999999])
+		resp = self.client.get(alerts_url)
+		self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+		# POST is not allowed on alerts action
+		payload: Dict[str, Any] = {"x": 1}
+		resp2 = self.client.post(alerts_url, payload, format='json')
+		self.assertEqual(resp2.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
+
+	def test_alerts_content_type(self):
+		# Create DS to hit alerts
+		payload: Dict[str, Any] = {
+			"name": "CT Source",
+			"type": DataSource.DataSourceType.API,
+			"connection_info": {"base_url": "https://example.com"},
+		}
+		create_resp = self.client.post(self.list_url, payload, format='json')
+		self.assertEqual(create_resp.status_code, status.HTTP_201_CREATED)
+		ds_id = create_resp.data['data_source_id']
+		alerts_url = reverse('data-source-alerts', args=[ds_id])
+		resp = self.client.get(alerts_url)
+		self.assertEqual(resp.status_code, status.HTTP_200_OK)
+		self.assertTrue(str(resp['Content-Type']).startswith('application/json'))
