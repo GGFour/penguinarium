@@ -1,42 +1,8 @@
+# This file is deprecated. Alert functionality has been moved to navigator.py
+# Keeping this file for backward compatibility, but all functions are now in navigator.py
+
 import streamlit as st
+from navigator import display_alerts_menu, go_to_selected_alert_id, show_alert_list
 
-# Example alerts data with details
-alerts = [
-    {
-        "id": 1,
-        "name": "Missing Values Detected",
-        "detail": "This alert occurs when your dataset contains missing or null values that need to be addressed."
-    },
-    {
-        "id": 2,
-        "name": "Duplicate Rows Found",
-        "detail": "This alert indicates that your data contains duplicate records."
-    },
-    {
-        "id": 3,
-        "name": "Outlier Values Detected",
-        "detail": "Detected data points that are significantly different from others, possibly indicating errors or special cases."
-    },
-    {
-        "id": 4,
-        "name": "Schema Change Alert",
-        "detail": "The structure of your dataset has changed, such as new or missing columns."
-    }
-]
-
-
-def go_to_selected_alert_id(id: int):
-    st.session_state["selected_alert_id"] = id
-    st.switch_page("pages/alert.py")
-
-
-def show_alert_list():
-    st.title("Data Anomaly Alerts")
-    st.write("Click on an alert to learn more about the issue.")
-    for alert in alerts:
-        if st.button(alert["name"], key=alert["id"]):
-            go_to_selected_alert_id(alert["id"])
-
-
-def display_alerts_menu():
-    show_alert_list()
+# Re-export functions for backward compatibility
+__all__ = ['display_alerts_menu', 'go_to_selected_alert_id', 'show_alert_list']

@@ -20,3 +20,25 @@ alerts_list = [
         "detail": "The structure of your dataset has changed, such as new or missing columns."
     }
 ]
+
+
+data_sources = [
+    {
+        "id": 1,
+        "name": "piskisiski",
+        "type": "Statements database",
+        "connection status": "Connection established"
+    },
+    {
+        "id": 2,
+        "name": "grebcy",
+        "type": "business customers database",
+        "connection status": "Connection established"
+    },
+    {
+        "id": 3,
+        "name": "piskisiski",
+        "type": "Statements database",
+        "connection status": "Connection established"
+    },
+]
