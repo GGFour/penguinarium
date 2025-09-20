@@ -1,0 +1,13 @@
+resources:
+  datasource:
+    config:
+      url: snowflake://USER:PASSWORD@ACCOUNT/DB/SCHEMA?warehouse=WH&role=ROLE
+      default_schema: SCHEMA
+  result_sink:
+    config:
+      base_path: /app/storage/results
+  llm:
+    config:
+      provider: openai
+      model: gpt-4o-mini
+      api_key: ${OPENAI_API_KEY}

@@ -1,0 +1,17 @@
+resources:
+  datasource:
+    config:
+      url: duckdb:///app/storage/demo.duckdb
+  result_sink:
+    config:
+      base_path: /app/storage/results
+  llm:
+    config:
+      provider: null
+      model: null
+      api_key: null
+ops:
+  agentic_params:
+    outputs: {}
+    inputs: {}
+    config: {}
