@@ -1,5 +1,6 @@
 from django.db import models
 from django.apps import apps
+from django.contrib.auth import get_user_model
 
 
 from common.models import BaseModel
@@ -26,6 +27,15 @@ class DataSource(BaseModel):
         help_text="Primary key for the data source"
     )
     
+    user = models.ForeignKey(
+        get_user_model(),
+        on_delete=models.CASCADE,
+        related_name='data_sources',
+        null=True,
+        blank=True,
+        help_text="Owner user of this data source"
+    )
+
     name = models.CharField(
         max_length=255,
         help_text="Human-readable name for the data source"

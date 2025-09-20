@@ -30,3 +30,10 @@ class DataSourceViewSet(viewsets.ModelViewSet):
 		if ds_type:
 			qs = qs.filter(type=ds_type)
 		return qs
+
+	def perform_create(self, serializer: DataSourceSerializer) -> None:  # type: ignore[override]
+		user = getattr(self.request, "user", None)
+		if getattr(user, "is_authenticated", False):
+			serializer.save(user=user)
+		else:
+			serializer.save()
