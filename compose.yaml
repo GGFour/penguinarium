@@ -55,8 +55,17 @@ services:
             context: dagster_app
             dockerfile: Dockerfile
         restart: unless-stopped
+        depends_on:
+            db:
+                condition: "service_healthy"
+                required: True
         environment:
             DATASET_DIR: /app/data/home_credit
+            DAGSTER_POSTGRES_HOST: ${POSTGRES_HOST}
+            DAGSTER_POSTGRES_PORT: ${POSTGRES_PORT}
+            DAGSTER_POSTGRES_DB: ${POSTGRES_DB}
+            DAGSTER_POSTGRES_USER: ${POSTGRES_USER}
+            DAGSTER_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
         volumes:
             - ./dagster_app:/app
         ports:

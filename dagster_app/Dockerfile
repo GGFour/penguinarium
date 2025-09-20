@@ -36,6 +36,7 @@ RUN uv sync --frozen --no-dev || uv sync --no-dev
 
 # Copy the rest of the application source AFTER deps so code changes don't invalidate dependency layer
 COPY dagster_app ./dagster_app
+COPY dagster_home ${DAGSTER_HOME}
 
 # Create Dagster home directory & non-root user
 RUN mkdir -p "${DAGSTER_HOME}" \
