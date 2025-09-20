@@ -1,8 +1,7 @@
 from django.db import models
-from typing import Any
 from django.apps import apps
 
-from src.common.models import BaseModel
+from common.models import BaseModel
 
 class DataSource(BaseModel):
     """
@@ -37,7 +36,7 @@ class DataSource(BaseModel):
         help_text="Type of data source (database, API, file, etc.)"
     )
     
-    connection_info: models.JSONField[Any] = models.JSONField(
+    connection_info = models.JSONField(
         help_text="Configuration and connection details for the data source"
     )
     

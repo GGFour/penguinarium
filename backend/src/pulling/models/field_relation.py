@@ -1,6 +1,6 @@
 from django.db import models
 
-from src.common.models import BaseModel
+from common.models import BaseModel
 from .field_metadata import FieldMetadata
 
 

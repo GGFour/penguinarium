@@ -1,7 +1,7 @@
 from django.db import models
 from django.apps import apps
 
-from src.common.models import BaseModel
+from common.models import BaseModel
 from .data_source import DataSource
 
 
