@@ -33,7 +33,7 @@ COPY --chown=python:python . .
 
 # ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
 WORKDIR /backend
-EXPOSE 80
+EXPOSE ${DJANGO_PORT}
 
 RUN uv sync
-CMD ["sh", "-c", "uv run src/manage.py runserver $DJANGO_PORT"]
+CMD ["sh", "-c", "uv run src/manage.py runserver 0.0.0.0:$DJANGO_PORT"]
