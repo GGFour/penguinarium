@@ -30,11 +30,14 @@ ENV DEBUG="${DEBUG}" \
 # COPY --from=app-build /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
 COPY --chown=python:python . .
 
-RUN chmod +x entrypoint.sh
+# Normalize Windows CRLF -> LF for shell scripts (avoids exec "no such file" issues)
+USER root
+RUN sed -i 's/\r$//' /entrypoint.sh \
+  && chmod +x /entrypoint.sh
+USER python
 
 # ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
 WORKDIR /
 EXPOSE ${DJANGO_PORT}
-
 RUN uv sync
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
