@@ -1,5 +1,5 @@
 import streamlit as st
-from navigator import display_alerts_menu, go_to_selected_data_source
+from navigator import show_alert_list, go_to_selected_data_source
 from data import data_sources
 
 
@@ -20,4 +20,4 @@ with col1:
             go_to_selected_data_source(data_source["id"])
 
 with col2:
-    display_alerts_menu()
+    show_alert_list()

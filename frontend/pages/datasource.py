@@ -30,7 +30,7 @@ else:
             if st.button("Back to Dashboard"):
                 go_back_to_list()
         with col2:
-            display_alerts_menu()
+            display_alerts_menu(data_source["id"])
     else:
         st.write("Data source not found.")
         if st.button("Go back to Dashboard"):
