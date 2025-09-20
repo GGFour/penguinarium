@@ -136,7 +136,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Django REST Framework defaults
-# Temporarily disable authentication/authorization globally.
+# Disable authentication/authorization globally for now.
 REST_FRAMEWORK: dict[str, object] = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_PERMISSION_CLASSES': [

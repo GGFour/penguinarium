@@ -83,12 +83,9 @@ class UsersCreateView(APIView):
 
 class UsersRetrieveView(RetrieveAPIView[Any]):
     serializer_class = UserSerializer
-    # Temporarily allow unauthenticated access
     permission_classes = [AllowAny]
-    authentication_classes = []
 
     def get_object(self):
-        # With auth temporarily disabled, retrieve the user by id directly.
         uid = parse_user_id(self.kwargs["user_id"])
         User = get_user_model()
         try:
@@ -100,7 +97,6 @@ class UsersRetrieveView(RetrieveAPIView[Any]):
 class UserDataSourcesListView(ListAPIView[Any]):
     serializer_class = DataSourceV1Serializer
     permission_classes = [AllowAny]
-    authentication_classes = []
     pagination_class = EnvelopeLimitOffsetPagination
 
     def get_queryset(self):
@@ -111,7 +107,6 @@ class UserDataSourcesListView(ListAPIView[Any]):
 class DataSourceRetrieveView(RetrieveAPIView[Any]):
     serializer_class = DataSourceV1Serializer
     permission_classes = [AllowAny]
-    authentication_classes = []
 
     def get_object(self):
         ds = ds_lookup_from_public_id(self.kwargs["datasource_id"])
@@ -120,7 +115,6 @@ class DataSourceRetrieveView(RetrieveAPIView[Any]):
 
 class DataSourceStatusView(APIView):
     permission_classes = [AllowAny]
-    authentication_classes = []
 
     def get(self, request: Request, datasource_id: str):
         ds = ds_lookup_from_public_id(datasource_id)
@@ -137,7 +131,6 @@ class DataSourceStatusView(APIView):
 class DataSourceTablesListView(ListAPIView[Any]):
     serializer_class = TableSerializer
     permission_classes = [AllowAny]
-    authentication_classes = []
     pagination_class = EnvelopeLimitOffsetPagination
 
     def get_queryset(self):
@@ -148,7 +141,6 @@ class DataSourceTablesListView(ListAPIView[Any]):
 class DataSourceAlertsListView(ListAPIView[Any]):
     serializer_class = AlertSerializer
     permission_classes = [AllowAny]
-    authentication_classes = []
     pagination_class = EnvelopeLimitOffsetPagination
 
     def list(self, request: Request, *args: Any, **kwargs: Any):
@@ -163,7 +155,6 @@ class DataSourceAlertsListView(ListAPIView[Any]):
 
 class AlertRetrieveView(APIView):
     permission_classes = [AllowAny]
-    authentication_classes = []
 
     def get(self, request: Request, alert_id: str):
         # Without an Alert model, respond 404 in a consistent format

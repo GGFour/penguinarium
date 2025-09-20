@@ -74,3 +74,15 @@ class DataSourceViewSet(viewsets.ModelViewSet):
 		# Convert DRF ReturnList to a plain list for clearer typing
 		data = list(ser.data)
 		return Response(data)
+
+	@action(detail=True, methods=["get"], url_path="alerts")
+	def alerts(self, request: Request, pk: str | None = None) -> Response:
+		"""List alerts for this data source.
+
+		Endpoint: GET /api/data-sources/<id>/alerts
+		Currently returns an empty list until an Alert model is introduced.
+		"""
+		# ds is retrieved for 404 behavior on non-existent pk
+		_ = cast(DataSource, self.get_object())
+		# TODO: Replace with real Alert queryset and serializer when model exists
+		return Response([])

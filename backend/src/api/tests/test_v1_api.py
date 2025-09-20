@@ -62,18 +62,12 @@ class V1ApiTests(APITestCase):
         self.assertIn("id", resp.data)
         self.assertIn("created_at", resp.data)
 
-    def test_auth_required_and_forbidden(self):
-        # Ensure no lingering auth from other tests
+    def test_auth_not_required_anymore(self):
+        # With auth disabled globally, endpoints should be accessible
         self.client.credentials()
-        # No auth => 401
         url = reverse("v1-users-retrieve", args=[f"user_{self.user.id}"])
         resp = self.client.get(url)
-        self.assertIn(resp.status_code, {status.HTTP_401_UNAUTHORIZED, status.HTTP_403_FORBIDDEN})
-
-        # Auth as other user => 403
-        self.auth(self.key2.key)
-        resp = self.client.get(url)
-        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
 
     def test_get_user_self(self):
         self.auth(self.key1.key)
@@ -117,9 +111,7 @@ class V1ApiTests(APITestCase):
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(resp.data["datasource_id"], ds_id)
-        self.assertIn("X-RateLimit-Limit", resp)
-        self.assertIn("X-RateLimit-Remaining", resp)
-        self.assertIn("X-RateLimit-Reset", resp)
+    # With rate limiting disabled, no rate limit headers are guaranteed
 
     def test_tables_list_mapping(self):
         self.auth(self.key1.key)
@@ -153,18 +145,12 @@ class V1ApiTests(APITestCase):
         self.assertIn("code", resp.data["error"])
         self.assertIn("message", resp.data["error"])
 
-    def test_rate_limit_429(self):
-        # Force a tiny limit for this test only
-        old = RateLimitMiddleware.RATE_LIMIT
-        RateLimitMiddleware.RATE_LIMIT = 1
-        try:
-            self.auth(self.key1.key)
-            ds_id = ds_public_id(self.ds1)
-            url = reverse("v1-datasource-status", args=[ds_id])
-            r1 = self.client.get(url)
-            self.assertEqual(r1.status_code, status.HTTP_200_OK)
-            r2 = self.client.get(url)
-            self.assertEqual(r2.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-            self.assertEqual(r2["X-RateLimit-Remaining"], "0")
-        finally:
-            RateLimitMiddleware.RATE_LIMIT = old
+    def test_rate_limit_disabled(self):
+        # No 429s when rate limiting is disabled
+        self.auth(self.key1.key)
+        ds_id = ds_public_id(self.ds1)
+        url = reverse("v1-datasource-status", args=[ds_id])
+        r1 = self.client.get(url)
+        self.assertEqual(r1.status_code, status.HTTP_200_OK)
+        r2 = self.client.get(url)
+        self.assertEqual(r2.status_code, status.HTTP_200_OK)

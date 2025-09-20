@@ -58,3 +58,26 @@ class TestDataSourceAPI(APITestCase):
 		resp = self.client.patch(detail_url, {"name": "Renamed"}, format='json')
 		self.assertEqual(resp.status_code, status.HTTP_200_OK)
 		self.assertEqual(resp.data['name'], 'Renamed')
+
+	def test_alerts_empty_list(self):
+		# Create one DS and call alerts endpoint
+		payload: Dict[str, Any] = {
+			"name": "Alerts Source",
+			"type": DataSource.DataSourceType.API,
+			"connection_info": {"base_url": "https://example.com"},
+		}
+		create_resp = self.client.post(self.list_url, payload, format='json')
+		self.assertEqual(create_resp.status_code, status.HTTP_201_CREATED)
+		ds_id = create_resp.data['data_source_id']
+
+		# without trailing slash
+		alerts_url = reverse('data-source-alerts-no-slash', args=[ds_id])
+		resp = self.client.get(alerts_url)
+		self.assertEqual(resp.status_code, status.HTTP_200_OK)
+		self.assertEqual(resp.data, [])
+
+		# with trailing slash
+		alerts_url2 = reverse('data-source-alerts', args=[ds_id])
+		resp2 = self.client.get(alerts_url2)
+		self.assertEqual(resp2.status_code, status.HTTP_200_OK)
+		self.assertEqual(resp2.data, [])
