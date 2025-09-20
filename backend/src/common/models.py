@@ -2,6 +2,11 @@ import uuid
 from django.db import models
 
 
+def generate_global_id():
+    """Generate a unique global ID using UUID4."""
+    return str(uuid.uuid4())
+
+
 class BaseModel(models.Model):
     class Meta:
         abstract = True
@@ -9,4 +14,5 @@ class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     global_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+
     is_deleted = models.BooleanField(default=False)

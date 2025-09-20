@@ -1,6 +1,7 @@
 from django.db import models
 from django.apps import apps
 
+
 from common.models import BaseModel
 
 class DataSource(BaseModel):

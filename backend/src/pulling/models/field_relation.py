@@ -4,6 +4,7 @@ from common.models import BaseModel
 from .field_metadata import FieldMetadata
 
 
+
 class FieldRelation(BaseModel):
     """
     Represents a relationship between two fields across tables or data sources.
