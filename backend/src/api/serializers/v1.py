@@ -1,5 +1,6 @@
 # pyright: reportMissingTypeArgument=false, reportUnknownMemberType=false, reportUnknownParameterType=false, reportUnknownVariableType=false
 from typing import Any
+from datetime import timezone
 from rest_framework import serializers
 
 # models are referenced dynamically via instance types; explicit imports not required here
@@ -11,16 +12,23 @@ class UserSerializer(serializers.Serializer):
     email = serializers.EmailField(read_only=True)
     created_at = serializers.CharField(read_only=True)
 
+    def _format_dt_z(self, dt: Any) -> str:
+        try:
+            # Convert to UTC and emit trailing 'Z' with seconds precision
+            return (
+                dt.astimezone(timezone.utc)
+                .replace(microsecond=0)
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
+        except Exception:
+            return ""
+
     def to_representation(self, instance: Any) -> dict[str, Any]:
         full = getattr(instance, "get_full_name", lambda: "")()
         name = full or getattr(instance, "username", None) or getattr(instance, "email", "")
         created = getattr(instance, "date_joined", None)
-        created_iso = ""
-        if created is not None:
-            try:
-                created_iso = created.replace(microsecond=0).isoformat() + "Z"
-            except Exception:
-                created_iso = ""
+        created_iso = self._format_dt_z(created) if created is not None else ""
         return {
             "id": f"user_{getattr(instance, 'pk', '')}",
             "name": name,
@@ -39,7 +47,15 @@ class DataSourceV1Serializer(serializers.Serializer):
     def to_representation(self, instance: Any) -> dict[str, Any]:
         obj = instance
         gid = str(obj.global_id).replace("-", "")
-        created_iso = obj.created_at.replace(microsecond=0).isoformat() + "Z"
+        try:
+            created_iso = (
+                obj.created_at.astimezone(timezone.utc)
+                .replace(microsecond=0)
+                .isoformat()
+                .replace("+00:00", "Z")
+            )
+        except Exception:
+            created_iso = ""
         uid = getattr(obj, "user_id", None)
         return {
             "id": f"ds_{gid[:10]}",

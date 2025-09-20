@@ -1,4 +1,6 @@
 from rest_framework.permissions import BasePermission
+from rest_framework.request import Request
+from rest_framework.views import APIView
 from rest_framework.exceptions import NotAuthenticated
 
 
@@ -9,8 +11,9 @@ class RequireBearerKey(BasePermission):
     - Otherwise, require request.user.is_authenticated to be True.
     """
 
-    def has_permission(self, request, view) -> bool:
+    def has_permission(self, request: Request, view: APIView) -> bool:
         auth = request.META.get("HTTP_AUTHORIZATION", "")
-        if not auth or not auth.startswith("Bearer "):
+        # Accept scheme in a case-insensitive manner (e.g., "bearer" or "Bearer")
+        if not auth or not auth.lower().startswith("bearer "):
             raise NotAuthenticated()
         return bool(getattr(request.user, "is_authenticated", False))

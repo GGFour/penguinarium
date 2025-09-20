@@ -4,7 +4,8 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.request import Request
 from datetime import datetime, timezone
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
+from api.auth import BearerAPIKeyAuthentication
 
 from pulling.models.data_source import DataSource
 from ..serializers.data_source import DataSourceSerializer
@@ -20,7 +21,8 @@ class DataSourceViewSet(viewsets.ModelViewSet):
 
 	queryset = DataSource.objects.filter(is_deleted=False)
 	serializer_class = DataSourceSerializer
-	permission_classes = [AllowAny]
+	permission_classes = [IsAuthenticated]
+	authentication_classes = [BearerAPIKeyAuthentication]
 
 	# Basic search/order support; filter by type via query param ?type=api|database|...
 	filter_backends = [filters.SearchFilter, filters.OrderingFilter]
