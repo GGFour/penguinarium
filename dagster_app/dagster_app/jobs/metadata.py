@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
-
 from dagster import In, Nothing, Out, job, op
 
 from ..ops import load_dataset_op
-from ..utils.metadata import DatasetMetadata, build_metadata, write_metadata
-
-METADATA_STORAGE_DIR = Path(__file__).resolve().parents[2] / "storage" / "metadata"
+from ..utils.metadata import DatasetMetadata, build_metadata
+from ..utils.persistence import persist_dataset_metadata
 
 
 @op(ins={"dataset": In(dict)}, out=Out(DatasetMetadata))
@@ -23,10 +19,21 @@ def build_metadata_op(context, dataset):  # type: ignore[no-untyped-def]
 
 @op(ins={"metadata": In(DatasetMetadata)}, out=Out(Nothing))
 def persist_metadata_op(context, metadata: DatasetMetadata):
-    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-    destination = METADATA_STORAGE_DIR / f"metadata_{timestamp}.json"
-    path = write_metadata(metadata, destination)
-    context.log.info("Metadata stored at %s", path)
+    result = persist_dataset_metadata(metadata)
+    context.log.info(
+        "Metadata stored in PostgreSQL for data source '%s' (id=%s). Tables: %d, fields: %d, relations: %d",
+        result.data_source_name,
+        result.data_source_id,
+        result.tables_created,
+        result.fields_created,
+        result.relations_created,
+    )
+    if result.skipped_relations:
+        context.log.warning(
+            "Skipped %d inferred relations because matching fields were not found: %s",
+            len(result.skipped_relations),
+            ", ".join(result.skipped_relations),
+        )
 
 
 @job(name="metadata_job")
