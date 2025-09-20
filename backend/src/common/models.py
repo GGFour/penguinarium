@@ -8,6 +8,5 @@ class BaseModel(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    global_id = models.CharField(
-        max_length=255, unique=True, default=lambda: str(uuid.uuid4()))
+    global_id = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     is_deleted = models.BooleanField(default=False)
