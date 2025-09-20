@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "streamlit>=1.49.1",
+    "requests>=2.31.0",
 ]
 
 [server]

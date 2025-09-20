@@ -19,21 +19,21 @@ if "selected_alert_id" not in st.session_state or st.session_state["selected_ale
         st.switch_page("dashboard.py")
 else:
     alert = next(
-        (a for a in alerts_list if a["id"] == st.session_state["selected_alert_id"]), None)
+        (a for a in alerts_list() if a["id"] == st.session_state["selected_alert_id"]), None)
     if alert:
         st.title(alert["name"])
         st.write(alert["detail"])
 
         # Display data source information
         data_source = next(
-            (ds for ds in data_sources if ds["id"] == alert["source_id"]), None)
+            (ds for ds in data_sources() if ds["id"] == alert["source_id"]), None)
         if data_source:
             st.write("---")
             st.subheader("Data Source")
             st.write(f"**Name:** {data_source['name']}")
             st.write(f"**Type:** {data_source['type']}")
             st.write(
-                f"**Connection Status:** {data_source['connection status']}")
+                f"**Connection Status:** {data_source['connection_status']}")
 
             # Add link to data source
             if st.button(f"View {data_source['name']} Details", key="view_datasource"):

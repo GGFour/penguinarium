@@ -17,9 +17,10 @@ def show_alert_list(source_id=None):
     st.write("Click on an alert to learn more about the issue.")
 
     # Filter alerts by source_id if provided
-    filtered_alerts = alerts_list
+    alerts_data = alerts_list()
+    filtered_alerts = alerts_data
     if source_id is not None:
-        filtered_alerts = [alert for alert in alerts_list if alert.get(
+        filtered_alerts = [alert for alert in alerts_data if alert.get(
             "source_id") == source_id]
 
     for alert in filtered_alerts:
