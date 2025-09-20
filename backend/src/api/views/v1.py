@@ -16,6 +16,7 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 
 from pulling.models.data_source import DataSource
 from pulling.models.table_metadata import TableMetadata
+from pulling.models import Alert
 
 from ..serializers.v1 import (
     UserSerializer,
@@ -143,19 +144,22 @@ class DataSourceAlertsListView(ListAPIView[Any]):
     permission_classes = [AllowAny]
     pagination_class = EnvelopeLimitOffsetPagination
 
-    def list(self, request: Request, *args: Any, **kwargs: Any):
-        ds_lookup_from_public_id(kwargs["datasource_id"])  # validate exists
-        # No Alert model yet; return empty list with pagination structure
-        page = []
-        return Response({
-            "data": page,
-            "pagination": {"total": 0, "limit": 25, "offset": 0}
-        })
+    def get_queryset(self):
+        ds = ds_lookup_from_public_id(self.kwargs["datasource_id"])  # raises 404 if invalid
+        return Alert.objects.filter(data_source=ds, is_deleted=False).order_by("-triggered_at")
 
 
 class AlertRetrieveView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request: Request, alert_id: str):
-        # Without an Alert model, respond 404 in a consistent format
-        return Response({"error": {"code": "not_found", "message": "Alert not found", "target": "alert"}}, status=404)
+        # Expect format al_<prefix>
+        if not re.match(r"^al_[A-Za-z0-9]+$", alert_id or ""):
+            raise Http404("Alert not found")
+        prefix = (alert_id.split("_", 1)[1] if "_" in alert_id else "").lower()
+        try:
+            # Match by global_id prefix similar to DataSource lookup
+            obj = Alert.objects.get(global_id__istartswith=prefix)
+        except Alert.DoesNotExist:
+            raise Http404("Alert not found")
+        return Response(AlertSerializer(obj).data)

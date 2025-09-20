@@ -78,6 +78,30 @@ class TestDataSourceAPI(APITestCase):
 		self.assertEqual(resp2.status_code, status.HTTP_200_OK)
 		self.assertEqual(resp2.data, [])
 
+	def test_status_and_tables_and_type_filter(self):
+		# Create a database type DS with tables
+		create_resp = self.client.post(self.list_url, {
+			"name": "DB Source",
+			"type": DataSource.DataSourceType.DATABASE,
+			"connection_info": {"host": "localhost"},
+		}, format='json')
+		self.assertEqual(create_resp.status_code, status.HTTP_201_CREATED)
+		ds_id = create_resp.data['data_source_id']
+		# Status endpoint
+		status_url = reverse('data-source-status', args=[ds_id])
+		resp_status = self.client.get(status_url)
+		self.assertEqual(resp_status.status_code, status.HTTP_200_OK)
+		self.assertIn('datasource_id', resp_status.data)
+		# Tables endpoint: initially empty list
+		tables_url = reverse('data-source-tables-no-slash', args=[ds_id])
+		resp_tables = self.client.get(tables_url)
+		self.assertEqual(resp_tables.status_code, status.HTTP_200_OK)
+		self.assertIsInstance(resp_tables.data, list)
+		# Type filter: request only API type should exclude DB Source
+		resp_list = self.client.get(self.list_url + '?type=api')
+		self.assertEqual(resp_list.status_code, status.HTTP_200_OK)
+		self.assertTrue(all(item['type'] == DataSource.DataSourceType.API for item in resp_list.data))
+
 	def test_alerts_invalid_id_404_and_method_not_allowed(self):
 		# Non-existent data source id should 404
 		alerts_url = reverse('data-source-alerts', args=[999999])

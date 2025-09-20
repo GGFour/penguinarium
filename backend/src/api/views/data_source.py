@@ -10,6 +10,7 @@ from pulling.models.data_source import DataSource
 from pulling.models.table_metadata import TableMetadata
 from ..serializers.data_source import DataSourceSerializer
 from ..serializers.v1 import TableSerializer
+from ..serializers.v1 import AlertSerializer
 from django.db.models import QuerySet
 from typing import cast
 
@@ -80,9 +81,13 @@ class DataSourceViewSet(viewsets.ModelViewSet):
 		"""List alerts for this data source.
 
 		Endpoint: GET /api/data-sources/<id>/alerts
-		Currently returns an empty list until an Alert model is introduced.
+		Returns a plain list of alerts (no pagination envelope).
 		"""
-		# ds is retrieved for 404 behavior on non-existent pk
-		_ = cast(DataSource, self.get_object())
-		# TODO: Replace with real Alert queryset and serializer when model exists
-		return Response([])
+		ds = cast(DataSource, self.get_object())
+		try:
+			from pulling.models import Alert  # local import to avoid circulars
+		except Exception:
+			return Response([])
+		qs = Alert.objects.filter(data_source=ds, is_deleted=False).order_by("-triggered_at")
+		ser = AlertSerializer(qs, many=True)
+		return Response(list(ser.data))
