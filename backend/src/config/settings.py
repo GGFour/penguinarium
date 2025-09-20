@@ -198,3 +198,11 @@ LOGGING: dict[str, object] = {
         },
     },
 }
+
+# Dagster integration defaults
+DAGSTER_GRAPHQL_URL = os.getenv('DAGSTER_GRAPHQL_URL', 'http://dagster:3000/graphql')
+DAGSTER_LOCATION_NAME = os.getenv('DAGSTER_LOCATION_NAME', 'penguinarium')
+DAGSTER_REPOSITORY_NAME = os.getenv('DAGSTER_REPOSITORY_NAME', 'dagster_app')
+DAGSTER_DEFAULT_MODE = os.getenv('DAGSTER_DEFAULT_MODE', 'default')
+DAGSTER_API_TOKEN = os.getenv('DAGSTER_API_TOKEN')
+DAGSTER_GRAPHQL_TIMEOUT = float(os.getenv('DAGSTER_GRAPHQL_TIMEOUT', '10'))

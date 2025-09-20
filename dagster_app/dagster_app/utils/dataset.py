@@ -8,10 +8,12 @@ from typing import Dict
 
 import pandas as pd
 
+from .connectors.base import SourceConnectorError
+
 DEFAULT_DATASET_DIR = Path(__file__).resolve().parents[2] / "data" / "home_credit"
 
 
-class DatasetNotFoundError(FileNotFoundError):
+class DatasetNotFoundError(SourceConnectorError, FileNotFoundError):
     """Raised when the dataset directory does not contain any CSV files."""
 
 
