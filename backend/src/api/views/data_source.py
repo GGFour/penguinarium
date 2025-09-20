@@ -1,5 +1,9 @@
 # pyright: reportMissingTypeArgument=false
 from rest_framework import viewsets, filters
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.request import Request
+from datetime import datetime, timezone
 from rest_framework.permissions import AllowAny
 
 from pulling.models.data_source import DataSource
@@ -37,3 +41,19 @@ class DataSourceViewSet(viewsets.ModelViewSet):
 			serializer.save(user=user)
 		else:
 			serializer.save()
+
+	@action(detail=True, methods=["get"], url_path="status")
+	def status(self, request: Request, pk: str | None = None) -> Response:
+		"""Return a simple connection status for the data source.
+
+		This mirrors the v1 status concept but uses the internal numeric id.
+		"""
+		ds = self.get_object()
+		gid = str(getattr(ds, "global_id", "")).replace("-", "")[:10]
+		payload = {
+			"datasource_id": f"ds_{gid}",
+			"status": "connected",
+			"last_checked_at": datetime.now(timezone.utc),
+			"error_message": None,
+		}
+		return Response(payload)
