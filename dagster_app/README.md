@@ -4,6 +4,8 @@ This service provides Dagster jobs for extracting metadata and running statistic
 
 ## Getting started locally
 
+0. Put data into ./dagster_app/data/home_credit/**.csv
+
 1. Install dependencies with [uv](https://github.com/astral-sh/uv):
 
    ```bash
@@ -21,6 +23,12 @@ This service provides Dagster jobs for extracting metadata and running statistic
 
    ```bash
    uv run dagster job execute -m dagster_app -j statistics_job
+   ```
+
+4. Can also run
+
+   ```bash
+   uv run dagster-webserver -m dagster_app -h 0.0.0.0 -p 3000
    ```
 
 By default the jobs look for CSV files in `dagster_app/data/home_credit`. The location can be overridden via the `DATASET_DIR` environment variable or by configuring the `dataset_dir` op config when running a job.
