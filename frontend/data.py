@@ -1,7 +1,4 @@
-import streamlit as st
-
-# Example alerts data with details
-alerts = [
+alerts_list = [
     {
         "id": 1,
         "name": "Missing Values Detected",
@@ -23,20 +20,3 @@ alerts = [
         "detail": "The structure of your dataset has changed, such as new or missing columns."
     }
 ]
-
-
-def go_to_selected_alert_id(id: int):
-    st.session_state["selected_alert_id"] = id
-    st.switch_page("pages/alert.py")
-
-
-def show_alert_list():
-    st.title("Data Anomaly Alerts")
-    st.write("Click on an alert to learn more about the issue.")
-    for alert in alerts:
-        if st.button(alert["name"], key=alert["id"]):
-            go_to_selected_alert_id(alert["id"])
-
-
-def display_alerts_menu():
-    show_alert_list()
