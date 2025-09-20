@@ -15,11 +15,32 @@ services:
             POSTGRES_HOST: ${POSTGRES_HOST}
             POSTGRES_PORT: ${POSTGRES_PORT}
             DJANGO_PORT: ${DJANGO_PORT}
+            ALLOWED_HOST: ${API_HOST}
         ports:
             - 8000:${DJANGO_PORT}
         networks:
             - penguins-network
-            
+
+    frontend:
+        build:
+            context: frontend
+            dockerfile: Dockerfile
+        restart: on-failure
+        depends_on:
+            tupik:
+                condition: "service_started"
+                required: True
+            db:
+                condition: "service_healthy"
+                required: True
+        environment:
+            API_HOST: ${API_HOST}
+            API_PORT: ${API_PORT}
+        ports:
+            - ${FRONTEND_PORT}:8501
+        networks:
+            - penguins-network
+
     db:
         image: postgres
         restart: always

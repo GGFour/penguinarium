@@ -1,10 +1,11 @@
 import streamlit as st
 import requests
 import json
+import os
 from typing import List, Dict, Optional
 
 # API Configuration
-API_BASE_URL = "http://localhost:8000/api"
+API_BASE_URL = f"http://{os.environ['API_HOST']}:{os.environ['API_PORT']}/api"
 
 
 @st.cache_data(ttl=300)  # Cache for 5 minutes
