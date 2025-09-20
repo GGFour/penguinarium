@@ -4,8 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.request import Request
 from datetime import datetime, timezone
-from rest_framework.permissions import IsAuthenticated
-from api.auth import BearerAPIKeyAuthentication
+from rest_framework.permissions import AllowAny
 
 from pulling.models.data_source import DataSource
 from ..serializers.data_source import DataSourceSerializer
@@ -21,8 +20,8 @@ class DataSourceViewSet(viewsets.ModelViewSet):
 
 	queryset = DataSource.objects.filter(is_deleted=False)
 	serializer_class = DataSourceSerializer
-	permission_classes = [IsAuthenticated]
-	authentication_classes = [BearerAPIKeyAuthentication]
+	permission_classes = [AllowAny]
+	authentication_classes = []
 
 	# Basic search/order support; filter by type via query param ?type=api|database|...
 	filter_backends = [filters.SearchFilter, filters.OrderingFilter]
@@ -50,9 +49,9 @@ class DataSourceViewSet(viewsets.ModelViewSet):
 
 		This mirrors the v1 status concept but uses the internal numeric id.
 		"""
-		ds = self.get_object()
+		ds = cast(DataSource, self.get_object())
 		gid = str(getattr(ds, "global_id", "")).replace("-", "")[:10]
-		payload = {
+		payload: dict[str, object] = {
 			"datasource_id": f"ds_{gid}",
 			"status": "connected",
 			"last_checked_at": datetime.now(timezone.utc),
