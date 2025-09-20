@@ -10,7 +10,7 @@ import re
 from rest_framework.views import APIView
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework import status
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 
@@ -60,8 +60,7 @@ def _gid10_from(obj: object) -> str:
 
 
 
-from api.auth import BearerAPIKeyAuthentication
-from api.permissions import RequireBearerKey
+# Auth is temporarily disabled globally via settings; keep imports minimal here
 
 
 class UsersCreateView(APIView):
@@ -84,50 +83,47 @@ class UsersCreateView(APIView):
 
 class UsersRetrieveView(RetrieveAPIView[Any]):
     serializer_class = UserSerializer
-    permission_classes = [RequireBearerKey, IsAuthenticated]
-    authentication_classes = [BearerAPIKeyAuthentication]
+    # Temporarily allow unauthenticated access
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get_object(self):
+        # With auth temporarily disabled, retrieve the user by id directly.
         uid = parse_user_id(self.kwargs["user_id"])
-        if getattr(self.request.user, "id", None) != uid:
-            # 403 if attempting to access other user's resources
-            self.permission_denied(self.request, message="Forbidden")
-        return self.request.user
+        User = get_user_model()
+        try:
+            return User.objects.get(id=uid)
+        except User.DoesNotExist:
+            raise Http404("User not found")
 
 
 class UserDataSourcesListView(ListAPIView[Any]):
     serializer_class = DataSourceV1Serializer
-    permission_classes = [RequireBearerKey, IsAuthenticated]
-    authentication_classes = [BearerAPIKeyAuthentication]
+    permission_classes = [AllowAny]
+    authentication_classes = []
     pagination_class = EnvelopeLimitOffsetPagination
 
     def get_queryset(self):
         uid = parse_user_id(self.kwargs["user_id"])
-        if getattr(self.request.user, "id", None) != uid:
-            self.permission_denied(self.request, message="Forbidden")
         return DataSource.objects.filter(user_id=uid, is_deleted=False).order_by("name")
 
 
 class DataSourceRetrieveView(RetrieveAPIView[Any]):
     serializer_class = DataSourceV1Serializer
-    permission_classes = [RequireBearerKey, IsAuthenticated]
-    authentication_classes = [BearerAPIKeyAuthentication]
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get_object(self):
         ds = ds_lookup_from_public_id(self.kwargs["datasource_id"])
-        if getattr(ds, "user_id", None) != getattr(self.request.user, "id", None):
-            self.permission_denied(self.request, message="Forbidden")
         return ds
 
 
 class DataSourceStatusView(APIView):
-    permission_classes = [RequireBearerKey, IsAuthenticated]
-    authentication_classes = [BearerAPIKeyAuthentication]
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get(self, request: Request, datasource_id: str):
         ds = ds_lookup_from_public_id(datasource_id)
-        if getattr(ds, "user_id", None) != getattr(request.user, "id", None):
-            self.permission_denied(request, message="Forbidden")
         gid = _gid10_from(ds)
         payload: dict[str, Any] = {
             "datasource_id": f"ds_{gid[:10]}",
@@ -140,27 +136,23 @@ class DataSourceStatusView(APIView):
 
 class DataSourceTablesListView(ListAPIView[Any]):
     serializer_class = TableSerializer
-    permission_classes = [RequireBearerKey, IsAuthenticated]
-    authentication_classes = [BearerAPIKeyAuthentication]
+    permission_classes = [AllowAny]
+    authentication_classes = []
     pagination_class = EnvelopeLimitOffsetPagination
 
     def get_queryset(self):
         ds = ds_lookup_from_public_id(self.kwargs["datasource_id"])  # raises 404 if invalid
-        if getattr(ds, "user_id", None) != getattr(self.request.user, "id", None):
-            self.permission_denied(self.request, message="Forbidden")
         return TableMetadata.objects.filter(data_source=ds, is_deleted=False).order_by("name")
 
 
 class DataSourceAlertsListView(ListAPIView[Any]):
     serializer_class = AlertSerializer
-    permission_classes = [RequireBearerKey, IsAuthenticated]
-    authentication_classes = [BearerAPIKeyAuthentication]
+    permission_classes = [AllowAny]
+    authentication_classes = []
     pagination_class = EnvelopeLimitOffsetPagination
 
     def list(self, request: Request, *args: Any, **kwargs: Any):
-        ds = ds_lookup_from_public_id(kwargs["datasource_id"])  # validate and enforce ownership
-        if getattr(ds, "user_id", None) != getattr(request.user, "id", None):
-            self.permission_denied(request, message="Forbidden")
+        ds_lookup_from_public_id(kwargs["datasource_id"])  # validate exists
         # No Alert model yet; return empty list with pagination structure
         page = []
         return Response({
@@ -170,8 +162,8 @@ class DataSourceAlertsListView(ListAPIView[Any]):
 
 
 class AlertRetrieveView(APIView):
-    permission_classes = [RequireBearerKey, IsAuthenticated]
-    authentication_classes = [BearerAPIKeyAuthentication]
+    permission_classes = [AllowAny]
+    authentication_classes = []
 
     def get(self, request: Request, alert_id: str):
         # Without an Alert model, respond 404 in a consistent format
