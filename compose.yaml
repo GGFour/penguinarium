@@ -1,6 +1,8 @@
 services:
     tupik:
-        image: tupik
+        build:
+            context: .
+            dockerfile: Dockerfile
         restart: on-failure
         depends_on: 
             db:
