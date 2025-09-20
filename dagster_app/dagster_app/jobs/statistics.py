@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from pathlib import Path
-
 from dagster import In, Nothing, Out, job, op
 
 from ..ops import load_dataset_op
-from ..utils.statistics import DatasetStatistics, compute_statistics, write_statistics
-
-STATISTICS_STORAGE_DIR = Path(__file__).resolve().parents[2] / "storage" / "statistics"
+from ..utils.persistence import persist_dataset_statistics
+from ..utils.statistics import DatasetStatistics, compute_statistics
 
 
 @op(ins={"dataset": In(dict)}, out=Out(DatasetStatistics))
@@ -23,10 +19,20 @@ def compute_statistics_op(context, dataset):  # type: ignore[no-untyped-def]
 
 @op(ins={"statistics": In(DatasetStatistics)}, out=Out(Nothing))
 def persist_statistics_op(context, statistics: DatasetStatistics):
-    timestamp = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
-    destination = STATISTICS_STORAGE_DIR / f"statistics_{timestamp}.json"
-    path = write_statistics(statistics, destination)
-    context.log.info("Statistics stored at %s", path)
+    result = persist_dataset_statistics(statistics)
+    context.log.info(
+        "Updated statistics for %d/%d columns in data source '%s' (id=%s)",
+        result.fields_updated,
+        result.columns_processed,
+        result.data_source_name,
+        result.data_source_id,
+    )
+    if result.missing_columns:
+        context.log.warning(
+            "Statistics skipped for %d columns without metadata entries: %s",
+            len(result.missing_columns),
+            ", ".join(result.missing_columns),
+        )
 
 
 @job(name="statistics_job")

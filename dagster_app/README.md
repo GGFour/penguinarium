@@ -59,4 +59,9 @@ uv run --extra test pytest
 
 By default the jobs look for CSV files in `dagster_app/data/home_credit`. The location can be overridden via the `DATASET_DIR` environment variable or by configuring the `dataset_dir` op config when running a job.
 
-Generated artifacts are stored in `dagster_app/storage/metadata` and `dagster_app/storage/statistics`.
+Both jobs persist their outputs directly into the shared PostgreSQL database
+used by the Django application. The metadata job (``metadata_job``) creates or
+updates records in the ``pulling_datasource``, ``pulling_tablemetadata``,
+``pulling_fieldmetadata``, and ``pulling_fieldrelation`` tables. The statistics
+job (``statistics_job``) augments the JSON payload stored on each
+``pulling_fieldmetadata`` record with the latest computed metrics.

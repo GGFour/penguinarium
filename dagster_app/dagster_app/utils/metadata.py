@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, Iterable, List
 
 import numpy as np
@@ -101,20 +99,3 @@ def build_metadata(dataset: Dict[str, pd.DataFrame]) -> DatasetMetadata:
     generated_at = datetime.utcnow().isoformat()
 
     return DatasetMetadata(generated_at=generated_at, tables=tables, relations=relations)
-
-
-def write_metadata(metadata: DatasetMetadata, destination: Path) -> Path:
-    """Persist metadata to a JSON file at ``destination``."""
-
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    serialized = json.dumps(asdict(metadata), default=_json_converter, indent=2)
-    destination.write_text(serialized, encoding="utf-8")
-    return destination
-
-
-def _json_converter(value):  # type: ignore[no-untyped-def]
-    if isinstance(value, (np.integer, np.floating)):
-        return value.item()
-    if isinstance(value, (datetime,)):
-        return value.isoformat()
-    return value
