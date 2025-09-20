@@ -7,7 +7,9 @@ from datetime import datetime, timezone
 from rest_framework.permissions import AllowAny
 
 from pulling.models.data_source import DataSource
+from pulling.models.table_metadata import TableMetadata
 from ..serializers.data_source import DataSourceSerializer
+from ..serializers.v1 import TableSerializer
 from django.db.models import QuerySet
 from typing import cast
 
@@ -58,3 +60,17 @@ class DataSourceViewSet(viewsets.ModelViewSet):
 			"error_message": None,
 		}
 		return Response(payload)
+
+	@action(detail=True, methods=["get"], url_path="tables")
+	def tables(self, request: Request, pk: str | None = None) -> Response:
+		"""List tables registered for this data source.
+
+		Endpoint: GET /api/data-sources/<id>/tables
+		Returns a simple list (no pagination envelope) of table metadata.
+		"""
+		ds = cast(DataSource, self.get_object())
+		qs = TableMetadata.objects.filter(data_source=ds, is_deleted=False).order_by("name")
+		ser = TableSerializer(qs, many=True)
+		# Convert DRF ReturnList to a plain list for clearer typing
+		data = list(ser.data)
+		return Response(data)
