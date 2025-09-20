@@ -36,4 +36,4 @@ WORKDIR /backend
 EXPOSE 80
 
 RUN uv sync
-CMD ["uv", "run" ,"manage.py", "serverstart"]
+CMD ["uv", "run" ,"src/manage.py", "runserver", "80"]
