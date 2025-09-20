@@ -1,7 +1,7 @@
 from django.db import models
 
-from src.common.models import BaseModel
-from .field_metadata import FieldMetadata
+from common.models import BaseModel
+from pulling.models.field_metadata import FieldMetadata
 
 
 class FieldRelation(BaseModel):

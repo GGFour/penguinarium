@@ -1,7 +1,12 @@
 from django.db import models
 
-from src.common.models import BaseModel
-from .data_source import DataSource
+from common.models import BaseModel
+from pulling.models.data_source import DataSource
+
+
+def default_metadata():
+    """Default empty dict for metadata fields."""
+    return {}
 
 
 class TableMetadata(BaseModel):
@@ -36,7 +41,7 @@ class TableMetadata(BaseModel):
     )
     
     metadata = models.JSONField(
-        default=dict,
+        default=default_metadata,
         help_text="Additional metadata about the table (schema, stats, etc.)"
     )
     
