@@ -1,1 +1,29 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Environments
+.venv/
+dagster_app/.venv/
 .env
+.env.*
+
+# Dagster caches and storage
+.dagster_home/
+dagster_app/storage/metadata/*.json
+dagster_app/storage/statistics/*.json
+dagster_app/.dagster_home/
+
+# Data files
+*.csv
+!dagster_app/data/**/*.csv
+
+# Logs and temp files
+*.log
+*.tmp
+
+# Editor directories
+.vscode/
+.idea/
+.DS_Store
