@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
@@ -75,18 +73,3 @@ def compute_statistics(dataset: Dict[str, pd.DataFrame]) -> DatasetStatistics:
 
     generated_at = datetime.utcnow().isoformat()
     return DatasetStatistics(generated_at=generated_at, columns=results)
-
-
-def write_statistics(statistics: DatasetStatistics, destination: Path) -> Path:
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(asdict(statistics), default=_json_converter, indent=2)
-    destination.write_text(payload, encoding="utf-8")
-    return destination
-
-
-def _json_converter(value):  # type: ignore[no-untyped-def]
-    if isinstance(value, (np.integer, np.floating)):
-        return value.item()
-    if isinstance(value, (datetime,)):
-        return value.isoformat()
-    return value
