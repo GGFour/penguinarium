@@ -1,7 +1,7 @@
 services:
     tupik:
         build:
-            context: .
+            context: backend
             dockerfile: Dockerfile
         restart: on-failure
         depends_on: 

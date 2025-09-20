@@ -30,10 +30,11 @@ ENV DEBUG="${DEBUG}" \
 # COPY --from=app-build /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
 COPY --chown=python:python . .
 
+RUN chmod +x entrypoint.sh
 
 # ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
-WORKDIR /backend
+WORKDIR /
 EXPOSE ${DJANGO_PORT}
 
 RUN uv sync
-CMD ["sh", "-c", "uv run src/manage.py runserver 0.0.0.0:$DJANGO_PORT"]
+ENTRYPOINT ["./entrypoint.sh"]
