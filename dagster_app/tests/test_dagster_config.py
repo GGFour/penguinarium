@@ -26,9 +26,10 @@ def test_storages_use_shared_postgres():
     config = _load_config()
 
     expected_storages = {
-        "run_storage": ("dagster._core.storage.runs", "SqlRunStorage"),
-        "event_log_storage": ("dagster._core.storage.event_log", "SqlEventLogStorage"),
-        "schedule_storage": ("dagster._core.storage.schedules", "SqlScheduleStorage"),
+        "run_storage": ("dagster_postgres.run_storage", "PostgresRunStorage"),
+        # Module path changed: dagster_postgres.event_log_storage -> dagster_postgres.event_log
+        "event_log_storage": ("dagster_postgres.event_log", "PostgresEventLogStorage"),
+        "schedule_storage": ("dagster_postgres.schedule_storage", "PostgresScheduleStorage"),
     }
 
     for storage_key, (module_name, class_name) in expected_storages.items():

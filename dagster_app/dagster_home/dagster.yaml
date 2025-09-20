@@ -1,6 +1,6 @@
 run_storage:
-  module: dagster._core.storage.runs
-  class: SqlRunStorage
+  module: dagster_postgres.run_storage
+  class: PostgresRunStorage
   config:
     postgres_db:
       username:
@@ -14,8 +14,9 @@ run_storage:
       port:
         env: DAGSTER_POSTGRES_PORT
 event_log_storage:
-  module: dagster._core.storage.event_log
-  class: SqlEventLogStorage
+  # Updated module path: dagster_postgres.event_log_storage was removed in newer dagster-postgres
+  module: dagster_postgres.event_log
+  class: PostgresEventLogStorage
   config:
     postgres_db:
       username:
@@ -29,8 +30,8 @@ event_log_storage:
       port:
         env: DAGSTER_POSTGRES_PORT
 schedule_storage:
-  module: dagster._core.storage.schedules
-  class: SqlScheduleStorage
+  module: dagster_postgres.schedule_storage
+  class: PostgresScheduleStorage
   config:
     postgres_db:
       username:

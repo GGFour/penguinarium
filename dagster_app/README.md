@@ -20,7 +20,9 @@ This service provides Dagster jobs for extracting metadata and running statistic
    These variables align with the values used by Docker Compose so the Dagster instance
    shares the same PostgreSQL database as the rest of the application. The
    `dagster_home/dagster.yaml` file configures Dagster's run, event log, and schedule
-   storage to use this database.
+   storage to use this database via the `dagster-postgres` plugin (`PostgresRunStorage`,
+   `PostgresEventLogStorage`, `PostgresScheduleStorage`). Make sure the
+   `dagster-postgres` dependency is installed (it's declared in `pyproject.toml`).
 
 2. Install dependencies with [uv](https://github.com/astral-sh/uv):
 
