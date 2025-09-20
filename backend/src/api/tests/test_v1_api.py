@@ -136,6 +136,22 @@ class V1ApiTests(APITestCase):
         self.assertEqual(resp.data["data"], [])
         self.assertIn("pagination", resp.data)
 
+    def test_v1_alert_retrieve_404_shape(self):
+        # Unknown alert id should return 404 with normalized error payload
+        url = reverse("v1-alert-retrieve", args=["alert_NON_EXISTENT"])  # format is arbitrary here
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn("error", resp.data)
+        self.assertIn("code", resp.data["error"])
+        self.assertIn("message", resp.data["error"])
+
+    def test_v1_datasource_alerts_invalid_id(self):
+        # Invalid datasource id format should 404
+        url = reverse("v1-datasource-alerts", args=["ds_NONEXISTENT"])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertIn("error", resp.data)
+
     def test_error_format_404(self):
         self.auth(self.key1.key)
         url = reverse("v1-datasource-retrieve", args=["ds_NONEXISTENT"])
