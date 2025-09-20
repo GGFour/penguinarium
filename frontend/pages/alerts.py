@@ -1,7 +1,7 @@
 import streamlit as st
 
 # Example alerts data with details
-alerts_list = [
+alerts = [
     {
         "id": 1,
         "name": "Missing Values Detected",
@@ -25,42 +25,31 @@ alerts_list = [
 ]
 
 
-def set_selected_alert_id(alert_id: int):
-    st.session_state["selected_alert_id"] = alert_id
+def set_selected_alert_id(id: int):
+    st.session_state["selected_alert_id"] = id
 
 
 def show_alert_list():
-    if not "selected_alert_id" in st.session_state:
-        st.session_state["selected_alert_id"] = None
     st.title("Data Anomaly Alerts")
     st.write("Click on an alert to learn more about the issue.")
-    for alert in alerts_list:
+    for alert in alerts:
         st.button(alert["name"], key=alert["id"],
-                  on_click=alert_navigate(alert["id"]))
+                  on_click=set_selected_alert_id(alert["id"]))
 
 
 def show_alert_detail(alert_id):
-    alert = next((a for a in alerts_list if a["id"] == alert_id), None)
+    alert = next((a for a in alerts if a["id"] == alert_id), None)
     if alert:
         st.title(alert["name"])
         st.write(alert["detail"])
         st.button("Back to Alert List",
-                  on_click=alert_navigate(None))
-
-
-def alert_navigate(alert_id=None):
-    if not "selected_alert_id" in st.session_state:
-        st.session_state.selected_alert_id = alert_id
-    if alert_id is not None:
-        st.switch_page("pages/alert.py")
-    else:
-        st.switch_page("dashboard.py")
+                  on_click=set_selected_alert_id(None))
 
 
 def display_alerts_menu():
     if not "selected_alert_id" in st.session_state:
         st.session_state["selected_alert_id"] = None
     if st.session_state["selected_alert_id"] is not None:
-        alert_navigate(st.session_state["selected_alert_id"])
+        show_alert_detail(st.session_state["selected_alert_id"])
     else:
         show_alert_list()
