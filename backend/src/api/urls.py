@@ -11,9 +11,12 @@ router.register(r'data-sources', DataSourceViewSet, basename='data-source')
 
 # Explicit mapping for the custom detail action to avoid 404s due to trailing-slash or router nuances
 tables_view = DataSourceViewSet.as_view({'get': 'tables'})
+alerts_view = DataSourceViewSet.as_view({'get': 'alerts'})
 
 urlpatterns = [
     path('', include(router.urls)),
     path('data-sources/<int:pk>/tables', tables_view, name='data-source-tables-no-slash'),
     path('data-sources/<int:pk>/tables/', tables_view, name='data-source-tables'),
+    path('data-sources/<int:pk>/alerts', alerts_view, name='data-source-alerts-no-slash'),
+    path('data-sources/<int:pk>/alerts/', alerts_view, name='data-source-alerts'),
 ]
