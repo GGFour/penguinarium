@@ -36,4 +36,4 @@ WORKDIR /backend
 EXPOSE 80
 
 RUN uv sync
-CMD ["uv", "run" ,"src/manage.py", "runserver", "80"]
+CMD ["sh", "-c", "uv run src/manage.py runserver $DJANGO_PORT"]
