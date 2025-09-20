@@ -1,12 +1,15 @@
 from django.db import models
+from django.apps import apps
 
 from common.models import BaseModel
-from pulling.models.table_metadata import TableMetadata
+
+from .table_metadata import TableMetadata
 
 
 def default_metadata():
     """Default empty dict for metadata fields."""
     return {}
+
 
 
 class FieldMetadata(BaseModel):
@@ -111,16 +114,44 @@ class FieldMetadata(BaseModel):
     
     def get_constraints_count(self):
         """Get the number of constraints defined for this field."""
-        return self.field_constraint_set.count()
+        # Use apps.get_model to avoid hard dependency when model is not yet implemented
+        try:
+            FieldConstraint = apps.get_model('pulling', 'FieldConstraint')
+        except LookupError:
+            return 0
+        return FieldConstraint.objects.filter(field=self).count()
     
     def get_latest_stats(self):
         """Get the most recent field statistics."""
-        return self.field_stats_set.order_by('-stat_date').first()
+        try:
+            FieldStats = apps.get_model('pulling', 'FieldStats')
+        except LookupError:
+            return None
+        return FieldStats.objects.filter(field=self).order_by('-stat_date').first()
     
-    # TODO: Add relationships when related models are created
-    # Relationships based on ER diagram:
-    # - One-to-many with FieldStats (field_metadata.field_stats_set)
-    # - One-to-many with FieldConstraint (field_metadata.field_constraint_set)
-    # - One-to-many with Relation as source (field_metadata.source_relations)
-    # - One-to-many with Relation as destination (field_metadata.destination_relations)
-    # - One-to-many with Alert (field_metadata.alert_set)
+    # TODO Relationships (reverse relations via related_name on the other models):
+    # - One-to-many with FieldStats (field_metadata.field_stats_set) — pending
+    # - One-to-many with FieldConstraint (field_metadata.field_constraint_set) — pending
+    # - One-to-many with Alert (field_metadata.alert_set) — pending
+
+    @property
+    def outgoing_relations(self):
+        """FieldRelation rows where this field is the source (src_field)."""
+        FieldRelation = apps.get_model('pulling', 'FieldRelation')
+        return FieldRelation.objects.filter(src_field=self)
+
+    @property
+    def incoming_relations(self):
+        """FieldRelation rows where this field is the destination (dst_field)."""
+        FieldRelation = apps.get_model('pulling', 'FieldRelation')
+        return FieldRelation.objects.filter(dst_field=self)
+
+    def relation_count(self) -> int:
+        """Total number of relations involving this field."""
+        FieldRelation = apps.get_model('pulling', 'FieldRelation')
+        return FieldRelation.objects.filter(models.Q(src_field=self) | models.Q(dst_field=self)).count()
+
+    def has_relations(self) -> bool:
+        """Whether this field participates in any relation."""
+        FieldRelation = apps.get_model('pulling', 'FieldRelation')
+        return FieldRelation.objects.filter(models.Q(src_field=self) | models.Q(dst_field=self)).exists()

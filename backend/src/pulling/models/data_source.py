@@ -1,4 +1,6 @@
 from django.db import models
+from django.apps import apps
+
 
 from common.models import BaseModel
 
@@ -63,8 +65,26 @@ class DataSource(BaseModel):
     def display_name(self):
         """Get a user-friendly display name."""
         return f"{self.name} ({self.get_type_display()})"
-    
-    # TODO: Add relationships when related models are created
-    # Relationships based on ER diagram:
-    # - One-to-many with TableMetadata (data_source.table_metadata_set)
-    # - One-to-many with Pipeline (data_source.pipeline_set)
+
+    # TODO Relationships (reverse relations via related_name on the other models):
+    # - One-to-many with Pipeline (data_source.pipeline_set) — pending Pipeline model
+
+    @property
+    def tables(self):
+        """Convenience accessor for all TableMetadata rows related to this data source."""
+        TableMetadata = apps.get_model('pulling', 'TableMetadata')
+        return TableMetadata.objects.filter(data_source=self)
+
+    def table_count(self) -> int:
+        """Number of tables registered for this data source."""
+        TableMetadata = apps.get_model('pulling', 'TableMetadata')
+        return TableMetadata.objects.filter(data_source=self).count()
+
+    def has_tables(self) -> bool:
+        """Whether this data source has any registered tables."""
+        TableMetadata = apps.get_model('pulling', 'TableMetadata')
+        return TableMetadata.objects.filter(data_source=self).exists()
+
+    # def pipelines(self) -> "QuerySet[Pipeline]":
+    #     """Accessor for related Pipeline rows (available once Pipeline model exists)."""
+    #     return self.pipeline_set.all()
