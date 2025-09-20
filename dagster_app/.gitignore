@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.DS_Store
+src/*.egg-info/
+storage/
+
+# Dagster run history
+logs/
+run_history/

@@ -1,0 +1,45 @@
+[project]
+name = "dq-platform"
+version = "0.1.0"
+requires-python = ">=3.11"
+description = "Dagster pipelines: Static, AI, and Agentic data quality checkers"
+readme = "README.md"
+dependencies = [
+  "dagster==1.8.*",
+  "dagster-webserver==1.8.*",
+  "pydantic>=2.7",
+  "SQLAlchemy>=2.0",
+  "pandas>=2.2",
+  "numpy>=1.26",
+  "pyarrow>=17.0",
+  "psycopg2-binary>=2.9",
+  "snowflake-sqlalchemy>=1.6",
+  "oracledb>=2.0",
+  "duckdb>=1.0",
+  "duckdb-engine>=0.11",
+  "openai>=1.40",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv]
+managed = true
+dev-dependencies = [
+  "pytest>=8.3",
+]
+
+[tool.uv.sources]
+
+[tool.uv.workspace]
+members = []
+
+[tool.uv.pip]
+no-build-isolation = true

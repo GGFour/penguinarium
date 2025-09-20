@@ -19,5 +19,18 @@ services:
         ports:
             - 8080:8080
 
+    dagster:
+        build:
+            context: ./dagster_app
+        environment:
+            DAGSTER_HOME: /app
+        ports:
+            - 3000:3000
+        volumes:
+            - dagster-storage:/app/storage
+        depends_on:
+            - db
+
 volumes:
     pg-data:
+    dagster-storage:
