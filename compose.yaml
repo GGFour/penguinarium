@@ -49,19 +49,20 @@ services:
             - 8080:8080
         networks:
             - penguins-network
-    # dagster_app:
-    #     build:
-    #         context: .
-    #         dockerfile: dagster_app/Dockerfile
-    #     restart: unless-stopped
-    #     environment:
-    #         DATASET_DIR: /app/data/home_credit
-    #     volumes:
-    #         - ./dagster_app:/app
-    #     ports:
-    #         - 3000:3000
-    #     networks:
-    #         - penguins-network
+
+    dagster_app:
+        build:
+            context: dagster_app
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        environment:
+            DATASET_DIR: /app/data/home_credit
+        volumes:
+            - ./dagster_app:/app
+        ports:
+            - 3000:3000
+        networks:
+            - penguins-network
 
 volumes:
     pg-data:
