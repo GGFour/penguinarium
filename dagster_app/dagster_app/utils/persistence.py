@@ -14,7 +14,7 @@ import psycopg2
 from psycopg2.extras import Json
 
 from .metadata import DatasetMetadata, RelationMetadata
-from .statistics import DatasetStatistics
+from .statistics import AlertCandidate, DatasetStatistics
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,17 @@ class StatisticsPersistenceResult:
     missing_columns: Tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class AlertPersistenceResult:
+    """Summary of persisted alerts."""
+
+    data_source_id: int
+    data_source_name: str
+    alerts_created: int
+    alerts_resolved: int
+    skipped_alerts: Tuple[str, ...]
+
+
 VALID_DATA_SOURCE_TYPES = {
     "database",
     "api",
@@ -51,6 +62,9 @@ VALID_DATA_SOURCE_TYPES = {
 
 DEFAULT_DATA_SOURCE_NAME = "Home Credit Dataset"
 DEFAULT_DATA_SOURCE_TYPE = "file"
+
+ALERT_STATUS_ACTIVE = "active"
+ALERT_STATUS_RESOLVED = "resolved"
 
 
 def persist_dataset_metadata(
@@ -241,16 +255,9 @@ def persist_dataset_statistics(
     now = datetime.utcnow()
     stats_map: Dict[Tuple[str, str], Dict[str, object]] = {}
     for column in statistics.columns:
-        stats_map[(column.table, column.column)] = _sanitize_json(
-            {
-                "sum": column.sum,
-                "mean": column.mean,
-                "std_dev": column.std_dev,
-                "outlier_count": column.outlier_count,
-                "total_count": column.total_count,
-                "computed_at": statistics.generated_at,
-            }
-        )
+        column_payload = column.to_payload()
+        column_payload["computed_at"] = statistics.generated_at
+        stats_map[(column.table, column.column)] = _sanitize_json(column_payload)
 
     with _connect() as conn:
         with conn.cursor() as cur:
@@ -272,6 +279,11 @@ def persist_dataset_statistics(
             data_source_id = row[0]
             existing_info = _coerce_json_dict(row[1])
             existing_info["last_statistics_run_at"] = statistics.generated_at
+            existing_info["statistics_overview"] = {
+                "generated_at": statistics.generated_at,
+                "metrics": statistics.metrics,
+                "tables": [table.to_payload() for table in statistics.tables],
+            }
             existing_info = _sanitize_json(existing_info)
             cur.execute(
                 """
@@ -327,6 +339,138 @@ def persist_dataset_statistics(
         columns_processed=len(statistics.columns),
         fields_updated=fields_updated,
         missing_columns=tuple(missing_columns),
+    )
+
+
+def persist_alerts(
+    alerts: Sequence[AlertCandidate],
+    *,
+    data_source_name: str | None = None,
+) -> AlertPersistenceResult:
+    """Persist active alerts generated from statistics into PostgreSQL."""
+
+    ds_name = _resolve_data_source_name(data_source_name)
+    now = datetime.utcnow()
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT data_source_id
+                FROM pulling_datasource
+                WHERE name = %s
+                ORDER BY data_source_id
+                LIMIT 1
+                """,
+                (ds_name,),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise RuntimeError(
+                    f"Data source '{ds_name}' does not exist; run metadata extraction first."
+                )
+            data_source_id = int(row[0])
+
+            cur.execute(
+                """
+                SELECT name, table_metadata_id
+                FROM pulling_tablemetadata
+                WHERE data_source_id = %s
+                """,
+                (data_source_id,),
+            )
+            table_lookup = {name: table_id for name, table_id in cur.fetchall()}
+
+            cur.execute(
+                """
+                SELECT tm.name, fm.name, fm.field_metadata_id
+                FROM pulling_fieldmetadata AS fm
+                JOIN pulling_tablemetadata AS tm
+                    ON fm.table_id = tm.table_metadata_id
+                WHERE tm.data_source_id = %s
+                """,
+                (data_source_id,),
+            )
+            field_lookup = {
+                (table_name, field_name): field_id
+                for table_name, field_name, field_id in cur.fetchall()
+            }
+
+            cur.execute(
+                """
+                UPDATE pulling_alert
+                SET status = %s,
+                    updated_at = %s
+                WHERE data_source_id = %s
+                    AND status = %s
+                """,
+                (ALERT_STATUS_RESOLVED, now, data_source_id, ALERT_STATUS_ACTIVE),
+            )
+            resolved_count = cur.rowcount
+
+            alerts_created = 0
+            skipped: List[str] = []
+
+            for alert in alerts:
+                if not alert.table:
+                    skipped.append(alert.name)
+                    continue
+
+                table_id = table_lookup.get(alert.table)
+                if table_id is None:
+                    skipped.append(alert.name)
+                    continue
+
+                field_id = None
+                if alert.column:
+                    field_id = field_lookup.get((alert.table, alert.column))
+                    if field_id is None:
+                        skipped.append(alert.name)
+                        continue
+
+                details_payload = _sanitize_json({**alert.details, "message": alert.message})
+
+                cur.execute(
+                    """
+                    INSERT INTO pulling_alert (
+                        created_at,
+                        updated_at,
+                        global_id,
+                        is_deleted,
+                        data_source_id,
+                        table_id,
+                        field_id,
+                        name,
+                        severity,
+                        status,
+                        details,
+                        triggered_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        now,
+                        now,
+                        str(uuid.uuid4()),
+                        False,
+                        data_source_id,
+                        table_id,
+                        field_id,
+                        alert.name,
+                        alert.severity,
+                        ALERT_STATUS_ACTIVE,
+                        Json(details_payload),
+                        alert.triggered_at,
+                    ),
+                )
+                alerts_created += 1
+
+    return AlertPersistenceResult(
+        data_source_id=data_source_id,
+        data_source_name=ds_name,
+        alerts_created=alerts_created,
+        alerts_resolved=resolved_count,
+        skipped_alerts=tuple(skipped),
     )
 
 
