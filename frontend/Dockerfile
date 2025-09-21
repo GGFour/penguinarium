@@ -1,40 +1,12 @@
-ARG PYTHON_VERSION=3.13
-FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-trixie-slim AS app
-LABEL maintainer="Ivan Trufanov <ivantrufan27@gmail.com>"
+FROM python:3.13.5-slim-bookworm
 
+RUN addgroup --system appuser && adduser --system --group --home /home/appuser appuser
+RUN mkdir /app && chown appuser:appuser /app
+WORKDIR /app
+COPY --chown=appuser:appuser . /app/
 
-
-ARG UID=1000
-ARG GID=1000
-
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl libpq-dev \
-  && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man \
-  && apt-get clean \
-  && groupadd -g "${GID}" python \
-  && useradd --create-home --no-log-init -u "${UID}" -g "${GID}" python \
-  && mkdir -p /public_collected public
-
-USER python
-
-ARG DEBUG="false"
-ENV DEBUG="${DEBUG}" \
-  PYTHONUNBUFFERED="true" \
-  PYTHONPATH="." \
-  UV_PROJECT_ENVIRONMENT="/home/python/.local" \
-  PATH="${PATH}:/home/python/.local/bin" \
-  USER="python"
-
-# COPY --chown=python:python --from=assets /app/public /public
-# COPY --chown=python:python --from=app-build /home/python/.local /home/python/.local
-# COPY --from=app-build /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
-COPY --chown=python:python . .
-
-# Normalize Windows CRLF -> LF for shell scripts (avoids exec "no such file" issues)
-USER python
-
-# ENTRYPOINT ["/app/bin/docker-entrypoint-web"]
-WORKDIR /
-EXPOSE 8501
+COPY --from=ghcr.io/astral-sh/uv:0.5.9 /uv /bin/uv
+USER appuser
 RUN uv sync
+
 CMD ["uv", "run", "streamlit", "run", "dashboard.py"]
