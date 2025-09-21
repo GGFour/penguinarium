@@ -30,7 +30,42 @@ SECRET_KEY = 'django-insecure-ghymwo*3l3_lwkk-7v3=n*sbvlp4-hqs9^c@ao#4)%a4*t0r8p
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Hosts allowed to access the app
+# Priority of environment variables (comma-separated values supported):
+#   DJANGO_ALLOWED_HOSTS, ALLOWED_HOSTS, ALLOWED_HOST (legacy, single value)
+_allowed_hosts_env = (
+    os.getenv("DJANGO_ALLOWED_HOSTS")
+    or os.getenv("ALLOWED_HOSTS")
+    or os.getenv("ALLOWED_HOST")
+)
+
+# Sensible defaults for local/dev and docker-compose network
+_default_hosts = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "[::1]",
+    # docker-compose service names that might be used as hostnames internally
+    "tupik",
+    "frontend",
+    "dagster_app",
+]
+
+if _allowed_hosts_env:
+    _env_hosts = [h.strip() for h in _allowed_hosts_env.split(",") if h.strip()]
+    # Merge env-provided hosts with defaults, preserving order and uniqueness
+    seen: set[str] = set()
+    ALLOWED_HOSTS = [h for h in _env_hosts + _default_hosts if not (h in seen or seen.add(h))]
+else:
+    ALLOWED_HOSTS = _default_hosts
+
+# If explicitly requested or in DEBUG, allow all hosts (useful for local/dev)
+if (
+    os.getenv("ALLOW_ALL_HOSTS", "").lower() in {"1", "true", "yes", "*"}
+    or os.getenv("DJANGO_ALLOW_ALL_HOSTS", "").lower() in {"1", "true", "yes", "*"}
+    or DEBUG
+):
+    ALLOWED_HOSTS = ["*"]
 
 
 # Application definition

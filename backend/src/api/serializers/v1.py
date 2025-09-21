@@ -2,6 +2,7 @@
 from typing import Any
 from datetime import timezone
 from rest_framework import serializers
+from pulling.models import Alert
 
 # models are referenced dynamically via instance types; explicit imports not required here
 
@@ -74,13 +75,26 @@ class DataSourceStatusSerializer(serializers.Serializer):
 
 
 class AlertSerializer(serializers.Serializer):
-    id = serializers.CharField()
-    datasource_id = serializers.CharField()
-    name = serializers.CharField()
-    severity = serializers.ChoiceField(choices=["info", "warning", "critical"])
-    status = serializers.ChoiceField(choices=["active", "resolved", "snoozed"])
-    details = serializers.JSONField()
-    triggered_at = serializers.DateTimeField()
+    id = serializers.CharField(read_only=True)
+    datasource_id = serializers.CharField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    severity = serializers.CharField(read_only=True)
+    status = serializers.CharField(read_only=True)
+    details = serializers.JSONField(read_only=True)
+    triggered_at = serializers.DateTimeField(read_only=True)
+
+    def to_representation(self, instance: Alert) -> dict[str, object]:  # type: ignore[override]
+        gid = str(instance.global_id).replace("-", "")
+        dsgid = str(instance.data_source.global_id).replace("-", "")
+        return {
+            "id": f"al_{gid[:10]}",
+            "datasource_id": f"ds_{dsgid[:10]}",
+            "name": instance.name,
+            "severity": instance.severity,
+            "status": instance.status,
+            "details": instance.details,
+            "triggered_at": instance.triggered_at,
+        }
 
 
 class TableSerializer(serializers.Serializer):

@@ -6,6 +6,8 @@ from rest_framework.test import APITestCase
 from rest_framework import status
 from pulling.models.data_source import DataSource
 from pulling.models.table_metadata import TableMetadata
+from pulling.models import Alert
+from datetime import datetime, timezone, timedelta
 
 
 def ds_public_id(ds: DataSource) -> str:
@@ -47,6 +49,28 @@ class V1ApiTests(APITestCase):
             metadata={"schema": "sales", "row_count": 45},
         )
 
+        # Alerts for ds1
+        self.alert1 = Alert.objects.create(
+            data_source=self.ds1,
+            table=None,
+            field=None,
+            name="Row count dropped",
+            severity=Alert.Severity.WARNING,
+            status=Alert.Status.ACTIVE,
+            details={"table": "orders", "expected_min": 50, "actual": 45},
+            triggered_at=datetime.now(timezone.utc) - timedelta(hours=1),
+        )
+        self.alert2 = Alert.objects.create(
+            data_source=self.ds1,
+            table=None,
+            field=None,
+            name="Freshness exceeded",
+            severity=Alert.Severity.CRITICAL,
+            status=Alert.Status.RESOLVED,
+            details={"table": "user_events", "max_age_m": 60, "actual_age_m": 120},
+            triggered_at=datetime.now(timezone.utc) - timedelta(hours=2),
+        )
+
     def auth(self, key: str):
         # No-op: authentication disabled
         self.client.credentials()
@@ -58,12 +82,23 @@ class V1ApiTests(APITestCase):
         self.assertIn("id", resp.data)
         self.assertIn("created_at", resp.data)
 
+    def test_users_create_missing_email(self):
+        url = reverse("v1-users-create")
+        resp = self.client.post(url, {"name": "No Email"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", resp.data)
+
     def test_auth_not_required_anymore(self):
         # With auth disabled globally, endpoints should be accessible
         self.client.credentials()
         url = reverse("v1-users-retrieve", args=[f"user_{self.user.id}"])
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
+
+    def test_users_retrieve_not_found(self):
+        url = reverse("v1-users-retrieve", args=["user_999999"])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_get_user_self(self):
         self.client.credentials()
@@ -123,13 +158,15 @@ class V1ApiTests(APITestCase):
         self.assertIn("row_count", item)
         self.assertIn("last_updated_at", item)
 
-    def test_alerts_list_empty(self):
+    def test_alerts_list_has_items(self):
         self.client.credentials()
         ds_id = ds_public_id(self.ds1)
-        url = reverse("v1-datasource-alerts", args=[ds_id])
+        url = reverse("v1-datasource-alerts", args=[ds_id]) + "?limit=1&offset=0"
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data["data"], [])
+        self.assertEqual(resp.data["pagination"]["limit"], 1)
+        self.assertGreaterEqual(resp.data["pagination"]["total"], 2)
+        self.assertGreaterEqual(len(resp.data["data"]), 1)
         self.assertIn("pagination", resp.data)
 
     def test_v1_alert_retrieve_404_shape(self):
@@ -140,6 +177,14 @@ class V1ApiTests(APITestCase):
         self.assertIn("error", resp.data)
         self.assertIn("code", resp.data["error"])
         self.assertIn("message", resp.data["error"])
+
+    def test_alert_retrieve_success(self):
+        # Build public id from global_id prefix
+        gid = str(self.alert1.global_id).replace("-", "")[:10]
+        url = reverse("v1-alert-retrieve", args=[f"al_{gid}"])
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp.data["name"], self.alert1.name)
 
     def test_v1_datasource_alerts_invalid_id(self):
         # Invalid datasource id format should 404

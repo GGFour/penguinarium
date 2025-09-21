@@ -15,11 +15,32 @@ services:
             POSTGRES_HOST: ${POSTGRES_HOST}
             POSTGRES_PORT: ${POSTGRES_PORT}
             DJANGO_PORT: ${DJANGO_PORT}
+            ALLOWED_HOST: ${API_HOST}
         ports:
             - 8000:${DJANGO_PORT}
         networks:
             - penguins-network
-            
+
+    frontend:
+        build:
+            context: frontend
+            dockerfile: Dockerfile
+        restart: on-failure
+        depends_on:
+            tupik:
+                condition: "service_started"
+                required: True
+            db:
+                condition: "service_healthy"
+                required: True
+        environment:
+            API_HOST: ${API_HOST}
+            API_PORT: ${API_PORT}
+        ports:
+            - ${FRONTEND_PORT}:8501
+        networks:
+            - penguins-network
+
     db:
         image: postgres
         restart: always
@@ -49,19 +70,29 @@ services:
             - 8080:8080
         networks:
             - penguins-network
-    # dagster_app:
-    #     build:
-    #         context: .
-    #         dockerfile: dagster_app/Dockerfile
-    #     restart: unless-stopped
-    #     environment:
-    #         DATASET_DIR: /app/data/home_credit
-    #     volumes:
-    #         - ./dagster_app:/app
-    #     ports:
-    #         - 3000:3000
-    #     networks:
-    #         - penguins-network
+
+    dagster_app:
+        build:
+            context: dagster_app
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        depends_on:
+            db:
+                condition: "service_healthy"
+                required: True
+        environment:
+            DATASET_DIR: /app/data/home_credit
+            DAGSTER_POSTGRES_HOST: ${POSTGRES_HOST}
+            DAGSTER_POSTGRES_PORT: ${POSTGRES_PORT}
+            DAGSTER_POSTGRES_DB: ${POSTGRES_DB}
+            DAGSTER_POSTGRES_USER: ${POSTGRES_USER}
+            DAGSTER_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        volumes:
+            - ./dagster_app:/app
+        ports:
+            - 3000:3000
+        networks:
+            - penguins-network
 
 volumes:
     pg-data:

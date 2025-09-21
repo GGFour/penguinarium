@@ -3,11 +3,13 @@ from rest_framework.routers import DefaultRouter
 
 # Explicitly import from the views package to avoid ambiguity with views.py
 from .views.data_source import DataSourceViewSet
+from .views.statistics import FieldStatsViewSet
 
 router = DefaultRouter()
 # Accept both with and without trailing slash
 router.trailing_slash = '/?'
 router.register(r'data-sources', DataSourceViewSet, basename='data-source')
+router.register(r'statistics', FieldStatsViewSet, basename='statistics')
 
 # Explicit mapping for the custom detail action to avoid 404s due to trailing-slash or router nuances
 tables_view = DataSourceViewSet.as_view({'get': 'tables'})
