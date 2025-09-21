@@ -13,6 +13,7 @@ import numpy as np
 import psycopg2
 from psycopg2.extras import Json
 
+from .alerts import LlmAlert
 from .metadata import DatasetMetadata, RelationMetadata
 from .statistics import DatasetStatistics
 
@@ -38,6 +39,16 @@ class StatisticsPersistenceResult:
     columns_processed: int
     fields_updated: int
     missing_columns: Tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class AlertsPersistenceResult:
+    """Summary of persisted LLM alert outcomes."""
+
+    data_source_id: int
+    data_source_name: str
+    alerts_created: int
+    replaced_alerts: int
 
 
 VALID_DATA_SOURCE_TYPES = {
@@ -327,6 +338,167 @@ def persist_dataset_statistics(
         columns_processed=len(statistics.columns),
         fields_updated=fields_updated,
         missing_columns=tuple(missing_columns),
+    )
+
+
+def persist_llm_alerts(
+    alerts: Sequence[LlmAlert], *, data_source_name: str | None = None
+) -> AlertsPersistenceResult:
+    """Persist synthetic LLM alerts into the alerts table."""
+
+    ds_name = _resolve_data_source_name(data_source_name)
+    ds_type = _resolve_data_source_type(None)
+    now = datetime.utcnow()
+    alerts_list = list(alerts)
+
+    connection_info_raw: Dict[str, object] = {
+        "ingested_by": "dagster_app",
+        "last_llm_alert_refresh_at": now,
+    }
+    dataset_dir = os.getenv("DATASET_DIR")
+    if dataset_dir:
+        connection_info_raw["dataset_dir"] = dataset_dir
+    connection_info = _sanitize_json(connection_info_raw)
+
+    with _connect() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT data_source_id, connection_info
+                FROM pulling_datasource
+                WHERE name = %s
+                ORDER BY data_source_id
+                LIMIT 1
+                """,
+                (ds_name,),
+            )
+            row = cur.fetchone()
+            if row:
+                data_source_id = row[0]
+                existing_info = _coerce_json_dict(row[1])
+                existing_info.update(connection_info)
+                merged_info = _sanitize_json(existing_info)
+                cur.execute(
+                    """
+                    UPDATE pulling_datasource
+                    SET updated_at = %s,
+                        type = %s,
+                        connection_info = %s
+                    WHERE data_source_id = %s
+                    """,
+                    (now, ds_type, Json(merged_info), data_source_id),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO pulling_datasource (
+                        created_at,
+                        updated_at,
+                        global_id,
+                        is_deleted,
+                        name,
+                        type,
+                        connection_info
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING data_source_id
+                    """,
+                    (
+                        now,
+                        now,
+                        str(uuid.uuid4()),
+                        False,
+                        ds_name,
+                        ds_type,
+                        Json(connection_info),
+                    ),
+                )
+                data_source_id = cur.fetchone()[0]
+
+            cur.execute(
+                """
+                SELECT table_metadata_id, name
+                FROM pulling_tablemetadata
+                WHERE data_source_id = %s
+                """,
+                (data_source_id,),
+            )
+            table_map = {name: table_id for table_id, name in cur.fetchall()}
+
+            cur.execute(
+                """
+                SELECT fm.field_metadata_id, fm.name, tm.name
+                FROM pulling_fieldmetadata AS fm
+                JOIN pulling_tablemetadata AS tm
+                    ON fm.table_id = tm.table_metadata_id
+                WHERE tm.data_source_id = %s
+                """,
+                (data_source_id,),
+            )
+            field_map = {
+                (table_name, field_name): field_id
+                for field_id, field_name, table_name in cur.fetchall()
+            }
+
+            cur.execute(
+                """
+                DELETE FROM pulling_alert
+                WHERE data_source_id = %s
+                  AND details ->> 'generated_by' = %s
+                """,
+                (data_source_id, "llm_pipeline"),
+            )
+            replaced_alerts = cur.rowcount or 0
+
+            alerts_created = 0
+            for alert in alerts_list:
+                details_payload = _sanitize_json(alert.details)
+                table_id = table_map.get(alert.table_name) if alert.table_name else None
+                field_id = (
+                    field_map.get((alert.table_name, alert.field_name))
+                    if alert.table_name and alert.field_name
+                    else None
+                )
+                cur.execute(
+                    """
+                    INSERT INTO pulling_alert (
+                        created_at,
+                        updated_at,
+                        global_id,
+                        is_deleted,
+                        data_source_id,
+                        table_id,
+                        field_id,
+                        name,
+                        severity,
+                        status,
+                        details,
+                        triggered_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        now,
+                        now,
+                        str(uuid.uuid4()),
+                        False,
+                        data_source_id,
+                        table_id,
+                        field_id,
+                        alert.name,
+                        alert.severity,
+                        alert.status,
+                        Json(details_payload),
+                        alert.triggered_at,
+                    ),
+                )
+                alerts_created += 1
+
+    return AlertsPersistenceResult(
+        data_source_id=data_source_id,
+        data_source_name=ds_name,
+        alerts_created=alerts_created,
+        replaced_alerts=replaced_alerts,
     )
 
 
