@@ -27,3 +27,4 @@ class TestDagsterRunEndpoint(APITestCase):
 		resp = self.client.post(url)
 		self.assertEqual(resp.status_code, status.HTTP_202_ACCEPTED)
 		self.assertIn("run_id", resp.data)
+
