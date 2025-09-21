@@ -422,72 +422,129 @@ VALUES
 ON CONFLICT (global_id) DO NOTHING;
 
 -- ============================================================================
--- SAMPLE ALERT DATA (JSON format for future Alert model)
+-- ALERTS (seed data)
 -- ============================================================================
 
-/*
-Sample Alert Data (to be used when Alert model is implemented):
+-- Notes:
+-- - Matches pulling.Alert schema (data_source, optional table/field, enums for severity/status)
+-- - Uses Postgres JSON, timestamps, and gen_random_uuid() for global_id
+-- - Duplicate-safe via ON CONFLICT (global_id) DO NOTHING
 
-[
-  {
-    "id": "alert_001",
-    "datasource_id": "ds_[data_source_global_id_prefix]",
-    "name": "Database Connection High Latency",
-    "severity": "warning",
-    "status": "active",
-    "details": {
-      "metric": "connection_latency",
-      "threshold": 1000,
-      "current_value": 1250,
-      "unit": "ms"
-    },
-    "triggered_at": "2024-01-15T10:30:00Z"
-  },
-  {
-    "id": "alert_002",
-    "datasource_id": "ds_[data_source_global_id_prefix]",
-    "name": "Database Disk Space Low",
-    "severity": "critical",
-    "status": "active",
-    "details": {
-      "metric": "disk_usage_percent",
-      "threshold": 90,
-      "current_value": 94.5,
-      "unit": "%"
-    },
-    "triggered_at": "2024-01-15T09:15:00Z"
-  },
-  {
-    "id": "alert_003",
-    "datasource_id": "ds_[data_source_global_id_prefix]",
-    "name": "API Rate Limit Exceeded",
-    "severity": "warning",
-    "status": "resolved",
-    "details": {
-      "metric": "requests_per_minute",
-      "threshold": 100,
-      "current_value": 95,
-      "unit": "req/min"
-    },
-    "triggered_at": "2024-01-15T08:45:00Z"
-  },
-  {
-    "id": "alert_004",
-    "datasource_id": "ds_[data_source_global_id_prefix]",
-    "name": "Kafka Consumer Lag",
-    "severity": "info",
-    "status": "active",
-    "details": {
-      "metric": "consumer_lag",
-      "threshold": 1000,
-      "current_value": 750,
-      "unit": "messages"
-    },
-    "triggered_at": "2024-01-15T11:20:00Z"
-  }
-]
-
-*/
+INSERT INTO pulling_alert (
+        name, severity, status, details, triggered_at,
+        data_source_id, table_id, field_id,
+        created_at, updated_at, global_id, is_deleted
+)
+VALUES
+        -- Production PostgreSQL -> users.last_login has high NULL rate (too many missing values)
+        (
+                'High NULL rate in users.last_login',
+                'warning',
+                'active',
+                '{"metric": "null_rate", "row_count": 15000, "null_count": 8200, "null_rate": 0.5467, "threshold": 0.30, "field": "last_login", "table": "users"}',
+                NOW() - INTERVAL '2 days',
+                (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL'),
+                (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'users' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL')),
+                (SELECT field_metadata_id FROM pulling_fieldmetadata WHERE name = 'last_login' AND table_id = (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'users' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL'))),
+                NOW(), NOW(), gen_random_uuid(), false
+        ),
+        -- Production PostgreSQL -> users.email has pattern mismatches (value vs column semantics)
+        (
+                'Email format mismatches in users.email',
+                'warning',
+                'active',
+                '{"metric": "pattern_mismatch", "expected_pattern": "^.+@.+\\..+$", "mismatch_count": 275, "sample_values": ["john_at_example.com", "no_at_symbol"], "field": "email", "table": "users"}',
+                NOW() - INTERVAL '1 day',
+                (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL'),
+                (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'users' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL')),
+                (SELECT field_metadata_id FROM pulling_fieldmetadata WHERE name = 'email' AND table_id = (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'users' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL'))),
+                NOW(), NOW(), gen_random_uuid(), false
+        ),
+        -- Production PostgreSQL -> orders table has fewer rows than expected (too many missing rows)
+        (
+                'Missing rows in orders for 2024-01-14',
+                'critical',
+                'active',
+                '{"metric": "row_count_gap", "date": "2024-01-14", "expected_rows": 2000, "actual_rows": 1240, "gap": 760, "gap_pct": 0.38, "table": "orders"}',
+                NOW() - INTERVAL '3 days',
+                (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL'),
+                (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'orders' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL')),
+                NULL,
+                NOW(), NOW(), gen_random_uuid(), false
+        ),
+        -- Production PostgreSQL -> orders.total_amount outliers
+        (
+                'Outliers detected in orders.total_amount',
+                'warning',
+                'active',
+                '{"metric": "outliers", "method": "zscore", "threshold": 3.0, "outlier_count": 95, "pctl_99": 14250.00, "max": 99999.99, "field": "total_amount", "table": "orders"}',
+                NOW() - INTERVAL '12 hours',
+                (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL'),
+                (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'orders' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL')),
+                (SELECT field_metadata_id FROM pulling_fieldmetadata WHERE name = 'total_amount' AND table_id = (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'orders' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL'))),
+                NOW(), NOW(), gen_random_uuid(), false
+        ),
+        -- Production PostgreSQL -> products.price invalid negatives (mismatch with semantics)
+        (
+                'Negative values found in products.price',
+                'critical',
+                'active',
+                '{"metric": "invalid_values", "condition": "price < 0", "violations": 3, "min": -12.50, "field": "price", "table": "products"}',
+                NOW() - INTERVAL '6 hours',
+                (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL'),
+                (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'products' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL')),
+                (SELECT field_metadata_id FROM pulling_fieldmetadata WHERE name = 'price' AND table_id = (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'products' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Production PostgreSQL'))),
+                NOW(), NOW(), gen_random_uuid(), false
+        ),
+        -- Analytics MySQL -> daily_metrics has gaps in daily dates (missing data)
+        (
+                'Date gaps detected in analytics.daily_metrics',
+                'warning',
+                'active',
+                '{"metric": "date_gaps", "expected_frequency": "daily", "missing_days": ["2024-01-05", "2024-01-12", "2024-01-19"], "gap_count": 3, "table": "daily_metrics"}',
+                NOW() - INTERVAL '4 days',
+                (SELECT data_source_id FROM pulling_datasource WHERE name = 'Analytics MySQL'),
+                (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'daily_metrics' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Analytics MySQL')),
+                NULL,
+                NOW(), NOW(), gen_random_uuid(), false
+        ),
+        -- Sales Data Files -> sales_2024_q1 high nulls in a column (table-level alert without FK to field)
+        (
+                'High NULL rate in sales_2024_q1.unit_price',
+                'warning',
+                'active',
+                '{"metric": "null_rate", "field": "unit_price", "row_count": 12000, "null_count": 2760, "null_rate": 0.23, "threshold": 0.10, "table": "sales_2024_q1"}',
+                NOW() - INTERVAL '5 days',
+                (SELECT data_source_id FROM pulling_datasource WHERE name = 'Sales Data Files'),
+                (SELECT table_metadata_id FROM pulling_tablemetadata WHERE name = 'sales_2024_q1' AND data_source_id = (SELECT data_source_id FROM pulling_datasource WHERE name = 'Sales Data Files')),
+                NULL,
+                NOW(), NOW(), gen_random_uuid(), false
+        ),
+        -- Customer API -> schema drift (data-source-level)
+        (
+                'Customer API schema drift detected',
+                'info',
+                'active',
+                '{"metric": "schema_drift", "endpoint": "/v1/customers", "added_fields": ["middle_name"], "removed_fields": ["age"], "breaking": true}',
+                NOW() - INTERVAL '7 days',
+                (SELECT data_source_id FROM pulling_datasource WHERE name = 'Customer API'),
+                NULL,
+                NULL,
+                NOW(), NOW(), gen_random_uuid(), false
+        ),
+        -- Real-time Events Stream -> consumer lag
+        (
+                'Kafka consumer lag high',
+                'warning',
+                'resolved',
+                '{"metric": "consumer_lag", "topic": "user_events", "current": 750, "threshold": 500, "unit": "messages"}',
+                NOW() - INTERVAL '8 days',
+                (SELECT data_source_id FROM pulling_datasource WHERE name = 'Real-time Events Stream'),
+                NULL,
+                NULL,
+                NOW(), NOW(), gen_random_uuid(), false
+        )
+ON CONFLICT (global_id) DO NOTHING;
 
 -- ============================================================================
 -- VERIFICATION QUERIES
@@ -502,7 +559,9 @@ SELECT 'Data Sources', COUNT(*) FROM pulling_datasource WHERE is_deleted = false
 UNION ALL
 SELECT 'Tables', COUNT(*) FROM pulling_tablemetadata WHERE is_deleted = false
 UNION ALL
-SELECT 'Fields', COUNT(*) FROM pulling_fieldmetadata WHERE is_deleted = false;
+SELECT 'Fields', COUNT(*) FROM pulling_fieldmetadata WHERE is_deleted = false
+UNION ALL
+SELECT 'Alerts', COUNT(*) FROM pulling_alert WHERE is_deleted = false;
 
 -- Display API keys for testing
 SELECT 
