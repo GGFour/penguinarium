@@ -265,6 +265,11 @@ def persist_dataset_statistics(
             data_source_id = row[0]
             existing_info = _coerce_json_dict(row[1])
             existing_info["last_statistics_run_at"] = statistics.generated_at
+            existing_info["statistics_overview"] = {
+                "generated_at": statistics.generated_at,
+                "metrics": statistics.metrics,
+                "tables": [table.to_payload() for table in statistics.tables],
+            }
             existing_info = _sanitize_json(existing_info)
             cur.execute(
                 """
