@@ -43,7 +43,13 @@ This service provides Dagster jobs for extracting metadata and running statistic
    uv run dagster job execute -m dagster_app -j statistics_job
    ```
 
-5. Can also run
+5. Generate synthetic LLM alerts:
+
+   ```bash
+   uv run dagster job execute -m dagster_app -j llm_pipeline
+   ```
+
+6. Can also run
 
    ```bash
    uv run dagster-webserver -m dagster_app -h 0.0.0.0 -p 3000
