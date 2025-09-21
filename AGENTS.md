@@ -77,6 +77,10 @@ Backend / Compose usage (with defaults):
 Dagster:
 - `DATASET_DIR` (mounted path for datasets)
 - `DAGSTER_POSTGRES_*` parallel to backend DB env vars (shared Postgres).
+- `DAGSTER_GRAPHQL_URL` explicit GraphQL endpoint for Dagster webserver (e.g., `http://dagster_app:3000/graphql`).
+- `DAGSTER_GRAPHQL_URLS` optional comma-separated list of endpoints to try in order.
+- `DAGSTER_REPO_LOCATION` and `DAGSTER_REPO_NAME` optional overrides when auto-discovery fails.
+- `DAGSTER_RUN_MODE` optional legacy mode tag if specific mode is required by older Dagster pipelines.
 
 Agent Rules:
 - NEVER commit real secrets (rotate immediately if leaked).

@@ -57,8 +57,7 @@ class TestService(TestCase):
             self.assertEqual(res["run_id"], "RUN123")
             self.assertEqual(res["status"], "submitted")
 
-    def test_trigger_job_fallback_simulated_when_unreachable(self) -> None:
+    def test_trigger_job_raises_when_unreachable(self) -> None:
         with mock.patch("urllib.request.urlopen", side_effect=OSError("no route")):
-            res = trigger_job("statistics_job")
-            self.assertEqual(res["status"], "submitted")
-            self.assertIsInstance(res["run_id"], str)
+            with self.assertRaises(RuntimeError):
+                trigger_job("statistics_job")

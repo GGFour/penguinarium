@@ -16,6 +16,8 @@ services:
             POSTGRES_PORT: ${POSTGRES_PORT}
             DJANGO_PORT: ${DJANGO_PORT}
             ALLOWED_HOST: ${API_HOST}
+            # Dagster GraphQL endpoint (backend will auto-discover repo/job)
+            DAGSTER_GRAPHQL_URL: http://dagster_app:3000/graphql
         ports:
             - 8000:${DJANGO_PORT}
         networks:
