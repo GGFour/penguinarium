@@ -21,5 +21,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/v1/', include('api.urls_v1')),
     path('api/v1/dagster/', include('dagster.urls')),
+    # Support non-versioned dagster routes for backward/explicit compatibility
+    path('api/dagster/', include('dagster.urls')),
     path('api/', include('api.urls')),
 ]

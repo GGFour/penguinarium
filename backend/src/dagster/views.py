@@ -72,3 +72,41 @@ class RunDagsterJobView(APIView):
 			},
 			status=status.HTTP_202_ACCEPTED,
 		)
+
+	# Provide GET as a convenience entry-point (no body)
+	def get(self, request: Request, job_name: str, *args: Any, **kwargs: Any) -> Response:
+		# Reuse the same validation and submission with empty config/tags
+		if not JOB_RE.match(job_name or ""):
+			return Response(
+				{
+					"error": {
+						"code": "invalid_parameter",
+						"message": "Invalid job name",
+						"target": "job_name",
+					}
+				},
+				status=status.HTTP_400_BAD_REQUEST,
+			)
+
+		try:
+			result = trigger_job(job_name=job_name, config=None, tags=None)
+		except Exception as exc:
+			return Response(
+				{
+					"error": {
+						"code": "job_submit_failed",
+						"message": str(exc),
+					}
+				},
+				status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+			)
+
+		return Response(
+			{
+				"job": job_name,
+				"run_id": result.get("run_id"),
+				"status": result.get("status", "submitted"),
+				"message": result.get("message"),
+			},
+			status=status.HTTP_202_ACCEPTED,
+		)
