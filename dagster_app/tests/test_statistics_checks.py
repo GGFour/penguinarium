@@ -5,7 +5,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from dagster_app.utils.statistics import analyze_column, compute_statistics
+from dagster_app.utils.statistics import (
+    analyze_column,
+    build_alert_candidates,
+    compute_statistics,
+)
 
 
 def _checks_by_name(column_statistics):
@@ -89,3 +93,35 @@ def test_null_run_length_captures_long_sequences():
     assert null_run.locations["total_count"] == 8
     assert null_run.locations["row_ranges"][0]["start"] == 1
     assert stats.metrics["longest_null_run"] == 8
+
+
+def test_build_alert_candidates_includes_row_context_and_table_summary():
+    dataset = {
+        "tbl": pd.DataFrame(
+            {
+                "value": [1, None, None, 5, 7, 1000],
+                "other": [10, 11, 12, 13, 14, 15],
+            }
+        )
+    }
+
+    statistics = compute_statistics(dataset)
+    alerts = build_alert_candidates(dataset, statistics)
+
+    assert alerts
+    null_alert = next(
+        alert
+        for alert in alerts
+        if alert.table == "tbl" and alert.column == "value" and alert.check_name == "null_ratio"
+    )
+    assert null_alert.severity in {"warning", "critical"}
+    assert null_alert.details["locations"]["total_count"] >= 1
+    assert null_alert.details["row_context"]
+    sample_context = null_alert.details["row_context"][0]["row_samples"][0]
+    assert "row_snapshot" in sample_context
+    assert isinstance(sample_context["row_snapshot"], dict)
+
+    table_alert = next(alert for alert in alerts if alert.check_name == "table_summary")
+    assert table_alert.table == "tbl"
+    assert table_alert.column is None
+    assert table_alert.details["issue_summary"]["failed_checks"] >= 1

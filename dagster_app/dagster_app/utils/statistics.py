@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Iterable, List
+from typing import Any, Dict, Iterable, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -23,6 +23,7 @@ SKEWNESS_WARNING_THRESHOLD = 2.0
 KURTOSIS_WARNING_THRESHOLD = 3.0
 LOW_VARIANCE_THRESHOLD = 1e-9
 MAX_ANOMALY_SAMPLES = 20
+MAX_ALERT_CONTEXT_ROWS = 5
 
 
 @dataclass
@@ -96,6 +97,32 @@ class TableStatistics:
             "column_count": self.column_count,
             "metrics": self.metrics,
             "issue_summary": self.issue_summary,
+        }
+
+
+@dataclass
+class AlertCandidate:
+    """Alert extracted from column or table statistics."""
+
+    table: Optional[str]
+    column: Optional[str]
+    check_name: str
+    name: str
+    severity: str
+    message: str
+    details: Dict[str, Any]
+    triggered_at: datetime
+
+    def to_payload(self) -> Dict[str, Any]:
+        return {
+            "table": self.table,
+            "column": self.column,
+            "check_name": self.check_name,
+            "name": self.name,
+            "severity": self.severity,
+            "message": self.message,
+            "details": self.details,
+            "triggered_at": self.triggered_at.isoformat(),
         }
 
 
@@ -204,6 +231,58 @@ def _build_anomaly_summary(
         "total_count": int(len(anomaly_indices)),
         "max_consecutive_run": int(max_run),
     }
+
+
+def _extract_row_context(
+    df: pd.DataFrame,
+    column: str,
+    locations: Dict[str, Any] | None,
+    *,
+    max_rows: int = MAX_ALERT_CONTEXT_ROWS,
+) -> List[Dict[str, Any]]:
+    if not locations:
+        return []
+    row_ranges = locations.get("row_ranges")
+    if not row_ranges:
+        return []
+
+    contexts: List[Dict[str, Any]] = []
+    total_rows = df.shape[0]
+    for row_range in row_ranges:
+        start = int(row_range.get("start", 0))
+        end = int(row_range.get("end", start))
+        if start < 0:
+            start = 0
+        if end < start:
+            end = start
+        if start >= total_rows:
+            continue
+        resolved_end = min(end, total_rows - 1)
+        limit = min(resolved_end + 1, start + max_rows)
+        subset = df.iloc[start:limit]
+        samples: List[Dict[str, Any]] = []
+        for offset, (idx, row) in enumerate(subset.iterrows()):
+            row_dict = {str(col): _json_safe(val) for col, val in row.to_dict().items()}
+            samples.append(
+                {
+                    "row_number": int(start + offset),
+                    "row_index": _json_safe(idx),
+                    "value": _json_safe(row.get(column)) if column in row else None,
+                    "row_snapshot": row_dict,
+                }
+            )
+        contexts.append(
+            {
+                "range": {
+                    "start": int(row_range.get("start", start)),
+                    "end": int(row_range.get("end", resolved_end)),
+                    "count": int(row_range.get("count", resolved_end - start + 1)),
+                },
+                "row_samples": samples,
+            }
+        )
+
+    return contexts
 
 
 def _longest_true_run(flags: Iterable[bool]) -> tuple[int, List[int]]:
@@ -867,6 +946,106 @@ def analyze_column(table: str, column: str, series: pd.Series) -> ColumnStatisti
         checks=checks,
         issue_summary=issue_summary,
     )
+
+
+def build_alert_candidates(
+    dataset: Dict[str, pd.DataFrame],
+    statistics: DatasetStatistics,
+    *,
+    max_context_rows: int = MAX_ALERT_CONTEXT_ROWS,
+) -> List[AlertCandidate]:
+    try:
+        triggered_at = datetime.fromisoformat(statistics.generated_at)
+    except ValueError:
+        triggered_at = datetime.utcnow()
+
+    alerts: List[AlertCandidate] = []
+
+    for column_stats in statistics.columns:
+        table_name = column_stats.table
+        column_name = column_stats.column
+        df = dataset.get(table_name)
+
+        for check in column_stats.checks:
+            if check.passed:
+                continue
+
+            severity = check.severity or "warning"
+            alert_name = f"{table_name}.{column_name}::{check.name}"
+            row_context: List[Dict[str, Any]] = []
+            if (
+                df is not None
+                and column_name in df.columns
+                and check.locations
+            ):
+                row_context = _extract_row_context(
+                    df, column_name, check.locations, max_rows=max_context_rows
+                )
+
+            details = {
+                "table": table_name,
+                "column": column_name,
+                "check_name": check.name,
+                "message": check.message,
+                "metrics": check.metrics,
+                "samples": check.samples,
+                "locations": check.locations,
+                "row_context": row_context,
+                "column_metrics": column_stats.metrics,
+                "issue_summary": column_stats.issue_summary,
+            }
+
+            alerts.append(
+                AlertCandidate(
+                    table=table_name,
+                    column=column_name,
+                    check_name=check.name,
+                    name=alert_name,
+                    severity=severity,
+                    message=check.message,
+                    details=details,
+                    triggered_at=triggered_at,
+                )
+            )
+
+    for table_stats in statistics.tables:
+        failed_checks = int(table_stats.issue_summary.get("failed_checks", 0) or 0)
+        warning_checks = int(table_stats.issue_summary.get("warning_checks", 0) or 0)
+        critical_checks = int(table_stats.issue_summary.get("critical_checks", 0) or 0)
+        if failed_checks == 0:
+            continue
+
+        severity = "critical" if critical_checks > 0 else "warning"
+        if critical_checks:
+            message = (
+                f"Table '{table_stats.table}' has {critical_checks} critical and "
+                f"{warning_checks} warning column checks failing."
+            )
+        else:
+            message = (
+                f"Table '{table_stats.table}' has {warning_checks} warning column checks failing."
+            )
+
+        details = {
+            "table": table_stats.table,
+            "metrics": table_stats.metrics,
+            "issue_summary": table_stats.issue_summary,
+        }
+
+        alerts.append(
+            AlertCandidate(
+                table=table_stats.table,
+                column=None,
+                check_name="table_summary",
+                name=f"{table_stats.table}::summary_issues",
+                severity=severity,
+                message=message,
+                details=details,
+                triggered_at=triggered_at,
+            )
+        )
+
+    return alerts
 
 
 def compute_statistics(dataset: Dict[str, pd.DataFrame]) -> DatasetStatistics:
