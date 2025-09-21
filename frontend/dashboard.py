@@ -13,6 +13,10 @@ import requests
 API_URL = "https://api.example.com/datapoint"  # replace with your API endpoint
 FIELD_NAME = "file"  # or e.g. "files[]" if your API expects that
 left, right = st.columns([1, 0.5])
+st.set_page_config(
+    page_title="Dashboard - Tupic",
+    page_icon="🐧",
+)
 with right:
 
     uploaded_files = st.file_uploader(
