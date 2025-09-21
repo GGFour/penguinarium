@@ -241,16 +241,9 @@ def persist_dataset_statistics(
     now = datetime.utcnow()
     stats_map: Dict[Tuple[str, str], Dict[str, object]] = {}
     for column in statistics.columns:
-        stats_map[(column.table, column.column)] = _sanitize_json(
-            {
-                "sum": column.sum,
-                "mean": column.mean,
-                "std_dev": column.std_dev,
-                "outlier_count": column.outlier_count,
-                "total_count": column.total_count,
-                "computed_at": statistics.generated_at,
-            }
-        )
+        column_payload = column.to_payload()
+        column_payload["computed_at"] = statistics.generated_at
+        stats_map[(column.table, column.column)] = _sanitize_json(column_payload)
 
     with _connect() as conn:
         with conn.cursor() as cur:
