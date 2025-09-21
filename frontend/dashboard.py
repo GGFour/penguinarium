@@ -1,5 +1,5 @@
 import streamlit as st
-from navigator import display_alerts_menu, go_to_selected_data_source
+from navigator import go_to_selected_data_source
 from data import data_sources
 import requests
 
@@ -51,6 +51,3 @@ with left:
         for data_source in data_sources():
             if st.button(data_source["name"], key=data_source["id"]):
                 go_to_selected_data_source(data_source["id"])
-
-    with col2:
-        display_alerts_menu()
